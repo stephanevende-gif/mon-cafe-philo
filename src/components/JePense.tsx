@@ -28,9 +28,10 @@ export async function JePense({ ctx, message }: { ctx: JourneyContext; message?:
           <div className="stack" style={{ gap: 8 }}>
             <span className="date">{formatDayLong(ctx.day)}</span>
             <span className="step-label">Je pense</span>
+            {sheet?.title && <p className="sheet-title">{sheet.title}</p>}
             {sheet && (
               <span className="theme">
-                Thème du jour : <b>{sheet.theme}</b>
+                Thème : <b>{sheet.theme}</b>
               </span>
             )}
           </div>
@@ -42,7 +43,10 @@ export async function JePense({ ctx, message }: { ctx: JourneyContext; message?:
             </div>
           ) : (
             <>
-              <h1 className="question"><Question text={sheet.question} /></h1>
+              <h1 className="question">
+                {sheet.title && <span className="visually-hidden">Question : </span>}
+                <Question text={sheet.question} />
+              </h1>
               {ctx.fallback && <p className="small muted">Question tirée des archives des Éditions M-Éditer.</p>}
               <p className="invite">Et vous, qu&apos;en pensez-vous&nbsp;?</p>
 

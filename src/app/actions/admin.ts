@@ -46,6 +46,7 @@ export async function saveSheet(fd: FormData) {
   const back = id ? `/admin/fiches/${id}` : "/admin/fiches/nouvelle";
   const day = str(fd, "jour", 10);
   if (day && !isDay(day)) fail(back, "La date est invalide.");
+  const title = str(fd, "titre", 200);
   const theme = str(fd, "theme", 80)?.toLowerCase();
   const question = str(fd, "question", 300);
   if (!theme || !question) fail(back, "Le thème et la question sont obligatoires.");
@@ -69,6 +70,7 @@ export async function saveSheet(fd: FormData) {
 
   const values = {
     day,
+    title,
     theme,
     question,
     synthesis,

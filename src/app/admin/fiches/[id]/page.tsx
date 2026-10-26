@@ -28,27 +28,28 @@ export default async function Page({ params, searchParams }: Props) {
       <Notice code={sp.message} />
       {sheet?.aiDrafted && (
         <p className="notice error" role="note">
-          Thème, question ou synthèse proposés par un outil d&apos;IA à partir du titre et de la description YouTube. Vérifiez chaque formulation
-          en regardant la vidéo avant de valider : la synthèse reste une synthèse éditoriale, jamais une citation.
+          Titre, thème, question ou proposition de réponse proposés par un outil d&apos;IA à partir du titre et de la description YouTube. Vérifiez chaque formulation
+          en regardant la vidéo avant de valider : la proposition de réponse reste une reformulation, jamais une citation.
         </p>
       )}
       {sheet && aiEnabled() && !sheet.aiDrafted && sheet.status !== "validee" && sheet.shortVideoId && (
         <form action={draftSheetsWithAi}>
           <input type="hidden" name="id" value={sheet.id} />
-          <button className="btn" type="submit">Proposer thème, question et synthèse avec l&apos;IA</button>
-          <span className="hint"> Remplace le thème, la question et la synthèse actuels par un brouillon à relire.</span>
+          <button className="btn" type="submit">Proposer titre, thème, question et réponse avec l&apos;IA</button>
+          <span className="hint"> Remplace le titre, le thème, la question et la proposition de réponse actuels par un brouillon à relire.</span>
         </form>
       )}
       {sheet?.replayOf && <p className="notice ok" role="note">Rediffusion automatique d&apos;une fiche déjà publiée.</p>}
       <form action={saveSheet} className="field-group">
         {sheet && <input type="hidden" name="id" value={sheet.id} />}
         <label>Jour de publication<input type="date" name="jour" id="jour" defaultValue={sheet?.day ?? sp.jour ?? ""} /><span className="hint">Laisser vide pour une fiche non programmée ou de secours. Le sujet change à minuit, heure de Paris.</span></label>
+        <label>Titre<input type="text" name="titre" id="titre" maxLength={200} defaultValue={sheet?.title ?? ""} placeholder="Aujourd'hui, on s'interroge sur…" /></label>
         <label>Thème<input type="text" name="theme" id="theme" required defaultValue={sheet?.theme ?? ""} placeholder="liberté, vérité, technique…" /></label>
-        <label>Question<input type="text" name="question" id="question" required defaultValue={sheet?.question ?? ""} /></label>
+        <label>Question (sous forme d&apos;alternative : « … ou … ? »)<input type="text" name="question" id="question" required defaultValue={sheet?.question ?? ""} /></label>
         <label>
           Proposition de réponse en deux phrases
           <textarea name="synthese" id="synthese" defaultValue={sheet?.synthesis ?? ""} style={{ minHeight: 120 }} />
-          <span className="hint">Synthèse éditoriale fidèle à l&apos;intervention. Elle n&apos;est jamais présentée comme une citation de l&apos;intervenant.</span>
+          <span className="hint">Proposition de réponse de l&apos;auteur, reformulée fidèlement à partir de l&apos;intervention. Elle n&apos;est jamais présentée comme une citation de l&apos;intervenant.</span>
         </label>
         <label>
           Short (moins de 3 minutes)

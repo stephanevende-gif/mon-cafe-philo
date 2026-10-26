@@ -7,14 +7,17 @@ import { cleanTitle } from "./youtube";
 // Rien de ce qu'elle produit n'est publié sans validation humaine.
 
 const Proposal = z.object({
+  title: z
+    .string()
+    .describe("Titre de la fiche, qui n'est pas une question : « Aujourd'hui, on s'interroge sur le rôle de… », « … sur la place de… », etc."),
   theme: z.string().describe("Un seul mot ou une courte expression : liberté, vérité, technique…"),
   question: z
     .string()
-    .describe("Une question philosophique courte, toujours formulée comme une alternative entre deux positions : « … ou … ? ». Elle sert de titre à la fiche."),
+    .describe("Une question philosophique courte, toujours formulée comme une alternative entre deux positions : « … ou … ? »."),
   synthesis: z
     .string()
     .nullable()
-    .describe("Deux phrases fidèles à l'intervention, ou null si la description ne permet pas de savoir ce que dit l'intervenant."),
+    .describe("Proposition de réponse de l'auteur : deux phrases fidèles à l'intervention, ou null si la description ne permet pas de savoir ce que dit l'intervenant."),
   missing: z.string().nullable().describe("Ce qui manque pour une fiche fiable, ou null."),
 });
 
@@ -24,11 +27,12 @@ const SYSTEM = `Tu aides l'équipe éditoriale des Éditions M-Éditer, maison d
 On te donne le titre et la description d'une courte vidéo (Short) où un philosophe ou un universitaire réel s'exprime.
 
 Propose :
+- un titre de fiche, qui n'est PAS une question, sous la forme « Aujourd'hui, on s'interroge sur… » suivi de l'objet de la réflexion : par exemple « Aujourd'hui, on s'interroge sur le rôle de la technique dans nos décisions », « Aujourd'hui, on s'interroge sur la place de la violence dans l'éthique » ;
 - un thème (un mot ou une courte expression, en minuscules) ;
-- une question philosophique courte, claire et stimulante, qui ne soit ni factuelle ni orientée vers sa propre réponse. Elle sert de titre à la fiche. Elle est TOUJOURS formulée comme une alternative entre deux positions défendables, avec « ou » : par exemple « La technique nous libère-t-elle ou nous asservit-elle ? », « Parler, est-ce transmettre des mots ou partager une présence ? ». Les deux branches doivent être aussi sérieuses l'une que l'autre ;
-- une synthèse de deux phrases, rigoureuse et accessible, qui introduit une distinction, une difficulté ou un paradoxe sans imposer de doctrine.
+- une question philosophique courte, claire et stimulante, qui ne soit ni factuelle ni orientée vers sa propre réponse. Elle est TOUJOURS formulée comme une alternative entre deux positions défendables, avec « ou » : par exemple « La technique nous libère-t-elle ou nous asservit-elle ? », « Parler, est-ce transmettre des mots ou partager une présence ? ». Les deux branches doivent être aussi sérieuses l'une que l'autre ;
+- la proposition de réponse de l'auteur : en deux phrases rigoureuses et accessibles, la réponse que l'intervenant apporte à cette question, telle que la description permet de l'établir (champ synthesis). Ce n'est pas une citation : c'est une reformulation fidèle ;
 
-La synthèse doit rester fidèle à ce que la description permet d'établir sur la pensée de l'intervenant. N'invente aucune citation, aucun titre, aucun diplôme, aucune référence. Si la description ne dit pas assez clairement ce que soutient l'intervenant, mets synthesis à null et explique ce qui manque dans missing.
+La proposition de réponse doit rester fidèle à ce que la description permet d'établir sur la pensée de l'intervenant. N'invente aucune citation, aucun titre, aucun diplôme, aucune référence. Si la description ne dit pas assez clairement ce que soutient l'intervenant, mets synthesis à null et explique ce qui manque dans missing.
 Écris en français.`;
 
 // Certains hébergeurs réservent le nom ANTHROPIC_API_KEY (et fixent ANTHROPIC_BASE_URL) pour leur propre usage :

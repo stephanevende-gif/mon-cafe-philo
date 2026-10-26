@@ -91,10 +91,10 @@ describe("synchronisation de la playlist", () => {
       apiKey: "test",
       fetchImpl: fakeFetch,
       now: new Date("2026-10-28T12:00:00Z"),
-      propose: async () => ({ theme: "Temps", question: "Le temps passe-t-il ?", synthesis: null, missing: "La thèse de l'intervenant n'est pas explicite." }),
+      propose: async () => ({ title: "Aujourd'hui, on s'interroge sur le passage du temps", theme: "Temps", question: "Le temps passe-t-il ou est-ce nous qui passons ?", synthesis: null, missing: "La thèse de l'intervenant n'est pas explicite." }),
     });
     const s = await ctx.db.query.sheets.findFirst({ where: eq(sheets.day, "2026-10-29") });
-    expect(s).toMatchObject({ theme: "temps", question: "Le temps passe-t-il ?", status: "a_verifier", aiDrafted: true, synthesis: null });
+    expect(s).toMatchObject({ theme: "temps", title: "Aujourd'hui, on s'interroge sur le passage du temps", question: "Le temps passe-t-il ou est-ce nous qui passons ?", status: "a_verifier", aiDrafted: true, synthesis: null });
     expect(s?.editorialNotes).toContain("pas explicite");
   });
 
@@ -139,12 +139,12 @@ describe("brouillons IA pour les fiches déjà importées", () => {
     const [v2] = await ctx.db.insert(videos).values({ youtubeId: "ancienBBBB2", kind: "short", title: "Short validé", description: "" }).returning();
     const [todo] = await ctx.db.insert(sheets).values({ theme: "à définir", question: "[Question à rédiger] Ancien Short", shortVideoId: v1.id, status: "a_verifier", editorialNotes: "Thème, question et synthèse à rédiger.\nIntervenant à identifier et à vérifier." }).returning();
     const [done] = await ctx.db.insert(sheets).values({ theme: "vérité", question: "Q validée ?", synthesis: "S.", shortVideoId: v2.id, status: "validee" }).returning();
-    const propose = async () => ({ theme: "Courage", question: "Le courage s'apprend-il ?", synthesis: "Deux phrases.", missing: null });
+    const propose = async () => ({ title: "Aujourd'hui, on s'interroge sur la place du courage", theme: "Courage", question: "Le courage s'apprend-il ou se révèle-t-il ?", synthesis: "Deux phrases.", missing: null });
 
     const r = await draftWithAi(ctx.db, propose, { sheetIds: [todo.id, done.id] });
     expect(r).toEqual({ drafted: 1, failed: [] });
     const after = await ctx.db.query.sheets.findFirst({ where: eq(sheets.id, todo.id) });
-    expect(after).toMatchObject({ theme: "courage", question: "Le courage s'apprend-il ?", status: "a_verifier", aiDrafted: true });
+    expect(after).toMatchObject({ theme: "courage", title: "Aujourd'hui, on s'interroge sur la place du courage", question: "Le courage s'apprend-il ou se révèle-t-il ?", status: "a_verifier", aiDrafted: true });
     expect(after?.editorialNotes).toContain("outil d'IA");
     expect(after?.editorialNotes).toContain("Intervenant à identifier");
     expect(after?.editorialNotes).not.toContain("à rédiger");

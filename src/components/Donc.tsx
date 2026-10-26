@@ -36,17 +36,17 @@ export async function Donc({ ctx }: { ctx: JourneyContext }) {
         </div>
 
         <div className="synth">
-          <span className="eyebrow">Une piste en deux phrases</span>
+          <span className="eyebrow">Proposition de réponse de l&apos;auteur</span>
           {d.sheet.synthesis ? (
             <>
               <p>{d.sheet.synthesis}</p>
               <small>
-                Synthèse éditoriale des Éditions M-Éditer{speaker ? ", fidèle à l'intervention ci-dessous" : ""}. Ce n&apos;est pas une citation
-                de l&apos;intervenant.
+                Réponse de l&apos;auteur reformulée par les Éditions M-Éditer{speaker ? ", fidèle à l'intervention ci-dessous" : ""}. Ce n&apos;est pas une
+                citation de l&apos;intervenant.
               </small>
             </>
           ) : (
-            <p className="pending">La synthèse de cette question est en cours de rédaction.</p>
+            <p className="pending">La proposition de réponse de l&apos;auteur est en cours de rédaction.</p>
           )}
         </div>
 
@@ -66,19 +66,19 @@ export async function Donc({ ctx }: { ctx: JourneyContext }) {
         <div className="medias">
           {d.short && (
             <div className="media">
-              <div className="kind"><span>Short</span><span>&lt; 3 min</span></div>
+              <div className="kind"><span>Écouter l&apos;auteur</span><span>&lt; 3 min</span></div>
               <YouTubePlayer youtubeId={d.short.youtubeId} title={cleanTitle(d.short.title)} vertical duration={formatDuration(d.short.durationSeconds)} />
               <span className="ttl">{cleanTitle(d.short.title)}</span>
             </div>
           )}
           {d.lecture ? (
             <div className="media">
-              <div className="kind"><span>Conférence</span><span>&gt; 3 min</span></div>
+              <div className="kind"><span>Aller plus loin avec l&apos;auteur</span><span>&gt; 3 min</span></div>
               <YouTubePlayer youtubeId={d.lecture.youtubeId} title={cleanTitle(d.lecture.title)} duration={formatDuration(d.lecture.durationSeconds)} />
               <span className="ttl">{cleanTitle(d.lecture.title)}</span>
             </div>
           ) : d.short ? (
-            <p className="pending">La conférence de cet intervenant n&apos;est pas encore identifiée.</p>
+            <p className="pending">La vidéo longue de cet auteur n&apos;est pas encore identifiée.</p>
           ) : null}
         </div>
 

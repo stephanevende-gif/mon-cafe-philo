@@ -180,7 +180,7 @@ async function doSync(db: Db, opts: SyncOptions): Promise<SyncReport> {
   return report;
 }
 
-const AI_NOTE = "Thème, question et synthèse proposés par un outil d'IA à partir de la description du Short : à vérifier avant validation.";
+const AI_NOTE = "Titre, thème, question et proposition de réponse proposés par un outil d'IA à partir de la description du Short : à vérifier avant validation.";
 const TODO_NOTE = "Thème, question et synthèse à rédiger.";
 
 function proposalNotes(p: SheetProposal | null): string[] {
@@ -190,6 +190,7 @@ function proposalNotes(p: SheetProposal | null): string[] {
 
 function proposalFields(p: SheetProposal | null, title: string) {
   return {
+    title: p?.title?.slice(0, 200) || null,
     theme: p?.theme?.toLowerCase().slice(0, 80) || "à définir",
     question: p?.question?.slice(0, 300) || `[Question à rédiger] ${cleanTitle(title)}`.slice(0, 300),
     synthesis: p?.synthesis?.slice(0, 700) ?? null,
