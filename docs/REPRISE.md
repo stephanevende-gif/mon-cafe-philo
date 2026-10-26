@@ -5,6 +5,7 @@ Ce fichier permet à toute personne (ou à une nouvelle session de Claude) de re
 ## Où en est-on
 - Étapes 1 à 4 : validées par Stéphane (Éditions M-Éditer) le 26 octobre 2026.
 - Étape 5 (automatisation YouTube) : livrée le 26 octobre 2026, en attente de validation. Voir `docs/bilans/bilan-04-etape5.md`.
+- 26 octobre 2026 : test réussi sur la vraie playlist (852 Shorts, 718 reliés à une conférence). Voir `docs/bilans/bilan-05-test-playlist.md`.
 - Prochaine étape après validation : étape 6 (forum, modération, paiement Stripe).
 - Tarif validé : 20 € TTC pour 335 jours, après 30 jours gratuits. Aucun renouvellement automatique.
 
