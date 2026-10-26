@@ -28,11 +28,21 @@ Propose :
 La synthèse doit rester fidèle à ce que la description permet d'établir sur la pensée de l'intervenant. N'invente aucune citation, aucun titre, aucun diplôme, aucune référence. Si la description ne dit pas assez clairement ce que soutient l'intervenant, mets synthesis à null et explique ce qui manque dans missing.
 Écris en français.`;
 
-export function aiEnabled(): boolean {
-  return !!process.env.ANTHROPIC_API_KEY;
+// Certains hébergeurs réservent le nom ANTHROPIC_API_KEY (et fixent ANTHROPIC_BASE_URL) pour leur propre usage :
+// la clé de l'application peut donc aussi être fournie sous le nom CAFE_PHILO_ANTHROPIC_KEY.
+function apiKey(): string | undefined {
+  return process.env.CAFE_PHILO_ANTHROPIC_KEY || process.env.ANTHROPIC_API_KEY || undefined;
 }
 
-export async function proposeSheet(input: { title: string; description: string }, client = new Anthropic()): Promise<SheetProposal | null> {
+export function aiEnabled(): boolean {
+  return !!apiKey();
+}
+
+function defaultClient(): Anthropic {
+  return new Anthropic({ apiKey: apiKey(), baseURL: process.env.CAFE_PHILO_ANTHROPIC_KEY ? "https://api.anthropic.com" : undefined });
+}
+
+export async function proposeSheet(input: { title: string; description: string }, client = defaultClient()): Promise<SheetProposal | null> {
   const response = await client.beta.messages.parse({
     model: "claude-opus-5-5",
     max_tokens: 4000,

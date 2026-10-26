@@ -44,7 +44,7 @@ Tests : `npm test` (une base `cafephilo_test` est nécessaire, voir `tests/helpe
 - Assistance IA (avec `ANTHROPIC_API_KEY`) : bouton « Proposer avec l'IA » sur une fiche, et « Préparer 10 brouillons avec l'IA » sur la page Synchronisation pour les fiches déjà importées. Les brouillons restent à valider.
 - Le Short le plus récent publié un jour J est proposé pour J+1 ; les autres vont dans la file éditoriale.
 - Une fiche jamais validée n'est jamais publiée : à défaut, une fiche déjà publiée est rediffusée (pas de répétition sur 60 jours, thèmes et intervenants variés sur 7 jours), sinon la fiche de secours.
-- `ANTHROPIC_API_KEY` (facultatif) active les propositions de thème, question et synthèse par Claude, signalées « IA » et toujours soumises à relecture.
+- `ANTHROPIC_API_KEY` (facultatif) active les propositions de thème, question et synthèse par Claude, signalées « IA » et toujours soumises à relecture. Si l'hébergeur réserve ce nom, la même clé peut être fournie sous `CAFE_PHILO_ANTHROPIC_KEY`.
 - Suivi et déclenchement manuel : `/admin/synchronisation`.
 
 ## Règles éditoriales inscrites dans le code
