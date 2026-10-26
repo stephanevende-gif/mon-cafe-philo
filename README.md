@@ -41,6 +41,7 @@ Tests : `npm test` (une base `cafephilo_test` est nécessaire, voir `tests/helpe
 
 - `POST /api/taches`, avec l'en-tête `Authorization: Bearer <CRON_SECRET>`, est à appeler **chaque heure** par le planificateur de l'hébergeur (cron).
 - Chaque appel lit la playlist (`YOUTUBE_API_KEY`, `YOUTUBE_PLAYLIST_ID`), crée une fiche « à vérifier » pour chaque nouveau Short (moins de 3 minutes), cherche la conférence liée dans la description (même chaîne, plus de 3 minutes : conférence complète ou extrait), puis garantit une fiche validée pour aujourd'hui et demain.
+- Assistance IA (avec `ANTHROPIC_API_KEY`) : bouton « Proposer avec l'IA » sur une fiche, et « Préparer 10 brouillons avec l'IA » sur la page Synchronisation pour les fiches déjà importées. Les brouillons restent à valider.
 - Le Short le plus récent publié un jour J est proposé pour J+1 ; les autres vont dans la file éditoriale.
 - Une fiche jamais validée n'est jamais publiée : à défaut, une fiche déjà publiée est rediffusée (pas de répétition sur 60 jours, thèmes et intervenants variés sur 7 jours), sinon la fiche de secours.
 - `ANTHROPIC_API_KEY` (facultatif) active les propositions de thème, question et synthèse par Claude, signalées « IA » et toujours soumises à relecture.

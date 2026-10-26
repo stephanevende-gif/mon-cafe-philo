@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, inArray, isNotNull, isNull, lt } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNotNull, isNull, lt, ne } from "drizzle-orm";
 import type { Db } from "@/db";
 import { sheets, syncRuns, videos } from "@/db/schema";
 import { addDays, parisDay } from "./dates";
@@ -153,17 +153,14 @@ async function doSync(db: Db, opts: SyncOptions): Promise<SyncReport> {
     }
 
     const notes = [
-      proposal ? "Thème, question et synthèse proposés par un outil d'IA à partir de la description du Short : à vérifier avant validation." : "Thème, question et synthèse à rédiger.",
-      proposal?.missing ? `Informations manquantes signalées : ${proposal.missing}` : null,
+      ...proposalNotes(proposal),
       lecture ? null : "Aucune conférence de la chaîne n'est citée dans la description : à rechercher.",
       "Intervenant à identifier et à vérifier.",
     ].filter(Boolean);
 
     await db.insert(sheets).values({
       day,
-      theme: proposal?.theme?.toLowerCase().slice(0, 80) || "à définir",
-      question: proposal?.question?.slice(0, 300) || `[Question à rédiger] ${s.title}`.slice(0, 300),
-      synthesis: proposal?.synthesis?.slice(0, 700) ?? null,
+      ...proposalFields(proposal, s.title),
       shortVideoId: short.id,
       lectureVideoId: lectureId,
       status: "a_verifier",
@@ -178,6 +175,76 @@ async function doSync(db: Db, opts: SyncOptions): Promise<SyncReport> {
     });
     if (day) report.scheduled.push(day);
     else report.queued++;
+  }
+  return report;
+}
+
+const AI_NOTE = "Thème, question et synthèse proposés par un outil d'IA à partir de la description du Short : à vérifier avant validation.";
+const TODO_NOTE = "Thème, question et synthèse à rédiger.";
+
+function proposalNotes(p: SheetProposal | null): string[] {
+  if (!p) return [TODO_NOTE];
+  return [AI_NOTE, ...(p.missing ? [`Informations manquantes signalées : ${p.missing}`] : [])];
+}
+
+function proposalFields(p: SheetProposal | null, title: string) {
+  return {
+    theme: p?.theme?.toLowerCase().slice(0, 80) || "à définir",
+    question: p?.question?.slice(0, 300) || `[Question à rédiger] ${title}`.slice(0, 300),
+    synthesis: p?.synthesis?.slice(0, 700) ?? null,
+  };
+}
+
+export interface DraftReport {
+  drafted: number;
+  failed: string[];
+}
+
+// Demande à l'IA un brouillon (thème, question, synthèse) pour des fiches déjà importées et jamais rédigées.
+// Une fiche validée ou déjà proposée par l'IA n'est jamais modifiée ; la fiche reste « à vérifier ».
+export async function draftWithAi(
+  db: Db,
+  propose: NonNullable<SyncOptions["propose"]>,
+  opts: { sheetIds?: string[]; limit?: number } = {},
+): Promise<DraftReport> {
+  const report: DraftReport = { drafted: 0, failed: [] };
+  const rows = await db
+    .select({ sheet: sheets, title: videos.title, description: videos.description })
+    .from(sheets)
+    .innerJoin(videos, eq(videos.id, sheets.shortVideoId))
+    .where(
+      and(
+        ne(sheets.status, "validee"),
+        eq(sheets.aiDrafted, false),
+        opts.sheetIds ? inArray(sheets.id, opts.sheetIds) : eq(sheets.status, "a_verifier"),
+      ),
+    )
+    .orderBy(desc(videos.publishedAt))
+    .limit(opts.limit ?? 10);
+
+  for (const { sheet, title, description } of rows) {
+    let proposal: SheetProposal | null;
+    try {
+      proposal = await propose({ title, description: description ?? "" });
+    } catch (e) {
+      report.failed.push(`« ${title} » (${(e as Error).message})`);
+      continue;
+    }
+    if (!proposal) {
+      report.failed.push(`« ${title} » (aucune proposition)`);
+      continue;
+    }
+    const kept = (sheet.editorialNotes ?? "").split("\n").filter((l) => l && l !== TODO_NOTE);
+    await db
+      .update(sheets)
+      .set({
+        ...proposalFields(proposal, title),
+        aiDrafted: true,
+        editorialNotes: [...proposalNotes(proposal), ...kept].join("\n"),
+        updatedAt: new Date(),
+      })
+      .where(and(eq(sheets.id, sheet.id), eq(sheets.aiDrafted, false), ne(sheets.status, "validee")));
+    report.drafted++;
   }
   return report;
 }

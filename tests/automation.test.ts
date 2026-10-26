@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
-import { planDay, syncPlaylist } from "@/lib/automation";
+import { draftWithAi, planDay, syncPlaylist } from "@/lib/automation";
 import { parseIsoDuration, linkedVideoIds } from "@/lib/youtube-api";
 import { sheets, speakers, syncRuns, videos } from "@/db/schema";
 import { testDb } from "./helpers";
@@ -130,5 +130,28 @@ describe("programmation quotidienne", () => {
     expect((await planDay(ctx.db, "2026-10-27")).action).toBe("deja_prete");
     // Le lendemain, plus aucune fiche ancienne disponible : la fiche de secours prendra le relais.
     expect((await planDay(ctx.db, "2026-10-28")).action).toBe("aucune");
+  });
+});
+
+describe("brouillons IA pour les fiches déjà importées", () => {
+  it("complète une fiche à rédiger sans la valider, et ne touche jamais une fiche validée", async () => {
+    const [v1] = await ctx.db.insert(videos).values({ youtubeId: "ancienAAAA1", kind: "short", title: "Ancien Short", description: "Sur le courage." }).returning();
+    const [v2] = await ctx.db.insert(videos).values({ youtubeId: "ancienBBBB2", kind: "short", title: "Short validé", description: "" }).returning();
+    const [todo] = await ctx.db.insert(sheets).values({ theme: "à définir", question: "[Question à rédiger] Ancien Short", shortVideoId: v1.id, status: "a_verifier", editorialNotes: "Thème, question et synthèse à rédiger.\nIntervenant à identifier et à vérifier." }).returning();
+    const [done] = await ctx.db.insert(sheets).values({ theme: "vérité", question: "Q validée ?", synthesis: "S.", shortVideoId: v2.id, status: "validee" }).returning();
+    const propose = async () => ({ theme: "Courage", question: "Le courage s'apprend-il ?", synthesis: "Deux phrases.", missing: null });
+
+    const r = await draftWithAi(ctx.db, propose, { sheetIds: [todo.id, done.id] });
+    expect(r).toEqual({ drafted: 1, failed: [] });
+    const after = await ctx.db.query.sheets.findFirst({ where: eq(sheets.id, todo.id) });
+    expect(after).toMatchObject({ theme: "courage", question: "Le courage s'apprend-il ?", status: "a_verifier", aiDrafted: true });
+    expect(after?.editorialNotes).toContain("outil d'IA");
+    expect(after?.editorialNotes).toContain("Intervenant à identifier");
+    expect(after?.editorialNotes).not.toContain("à rédiger");
+    const untouched = await ctx.db.query.sheets.findFirst({ where: eq(sheets.id, done.id) });
+    expect(untouched?.question).toBe("Q validée ?");
+
+    // Une fiche déjà proposée par l'IA n'est pas réécrite.
+    expect((await draftWithAi(ctx.db, propose, { sheetIds: [todo.id] })).drafted).toBe(0);
   });
 });

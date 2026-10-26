@@ -239,3 +239,19 @@ export async function syncNow() {
   parts.push(...r.plans.map((p) => `${p.day} : ${p.action === "deja_prete" ? "fiche validée prête" : p.action === "rediffusion" ? "rediffusion programmée" : "fiche de secours"}.`));
   redirect(`/admin/synchronisation?message=${encodeURIComponent(parts.join(" "))}`);
 }
+
+// ---------- assistance IA ----------
+
+export async function draftSheetsWithAi(fd: FormData) {
+  await requireEditor();
+  const id = uuid(fd, "id");
+  const back = id ? `/admin/fiches/${id}` : "/admin/synchronisation";
+  const { aiEnabled, proposeSheet } = await import("@/lib/ai");
+  if (!aiEnabled()) fail(back, "Assistance IA désactivée : la clé Anthropic n'est pas configurée.");
+  const { draftWithAi } = await import("@/lib/automation");
+  const r = await draftWithAi(db, (input) => proposeSheet(input), id ? { sheetIds: [id], limit: 1 } : { limit: 10 });
+  revalidatePath("/admin", "layout");
+  const parts = [`${r.drafted} brouillon(s) proposé(s) par l'IA, à relire avant validation.`];
+  if (r.failed.length) parts.push(`Sans proposition : ${r.failed.join(" ; ")}`);
+  redirect(`${back}?message=${encodeURIComponent(parts.join(" "))}`);
+}

@@ -3,7 +3,8 @@ import { asc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { books, sheets, speakers, videos } from "@/db/schema";
 import { Notice } from "@/components/Notice";
-import { deleteSheet, saveSheet } from "@/app/actions/admin";
+import { deleteSheet, draftSheetsWithAi, saveSheet } from "@/app/actions/admin";
+import { aiEnabled } from "@/lib/ai";
 import { formatDate } from "@/lib/dates";
 
 type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ message?: string; jour?: string }> };
@@ -29,6 +30,13 @@ export default async function Page({ params, searchParams }: Props) {
           Thème, question ou synthèse proposés par un outil d&apos;IA à partir du titre et de la description YouTube. Vérifiez chaque formulation
           en regardant la vidéo avant de valider : la synthèse reste une synthèse éditoriale, jamais une citation.
         </p>
+      )}
+      {sheet && aiEnabled() && !sheet.aiDrafted && sheet.status !== "validee" && sheet.shortVideoId && (
+        <form action={draftSheetsWithAi}>
+          <input type="hidden" name="id" value={sheet.id} />
+          <button className="btn" type="submit">Proposer thème, question et synthèse avec l&apos;IA</button>
+          <span className="hint"> Remplace le thème, la question et la synthèse actuels par un brouillon à relire.</span>
+        </form>
       )}
       {sheet?.replayOf && <p className="notice ok" role="note">Rediffusion automatique d&apos;une fiche déjà publiée.</p>}
       <form action={saveSheet} className="field-group">

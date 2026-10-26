@@ -19,7 +19,15 @@
 
 ## Changement demandé par Stéphane (26 octobre 2026)
 - Une vidéo citée dans la description est désormais acceptée dès qu'elle dure plus de 3 minutes (conférence complète ou extrait). Un autre Short n'est jamais rattaché comme conférence.
-- Les écrans (fiche, administration, page « Donc ») indiquent « plus de 3 minutes ». Un test automatique a été ajouté (18 tests passent).
+- Les écrans (fiche, administration, page « Donc ») indiquent « plus de 3 minutes ». Des tests automatiques ont été ajoutés (19 tests passent).
+
+## Assistance IA pour le catalogue (accord de Stéphane)
+- Stéphane garde tout le catalogue (option A) et accepte l'assistance IA.
+- Nouveau bouton sur chaque fiche : « Proposer thème, question et synthèse avec l'IA ».
+- Nouveau bouton sur la page Synchronisation : « Préparer 10 brouillons avec l'IA » (les Shorts les plus récents d'abord).
+- Une fiche validée ou déjà proposée par l'IA n'est jamais modifiée. Les brouillons restent « à vérifier » et portent la mention IA.
+- Ces boutons n'apparaissent qu'une fois la clé Anthropic (ANTHROPIC_API_KEY) ajoutée à l'environnement. **Elle n'est pas encore présente.**
+- Temps estimé (non mesuré) : environ 5 minutes par fiche sans aide, 2 minutes avec l'IA. Une soixantaine de fiches validées suffit pour démarrer.
 
 ## Pourquoi 22 Shorts n'ont toujours pas de vidéo reliée
 - 6 : la vidéo citée est elle-même un Short (moins de 3 minutes).
@@ -34,6 +42,7 @@
 3. Les 5 liens mal écrits peuvent être corrigés directement dans YouTube.
 
 ## Ce qui reste à faire
+- Ajouter la clé Anthropic (ANTHROPIC_API_KEY) dans l'environnement, comme la clé YouTube.
 - Validation de l'étape 5 par Stéphane (et réponses aux questions ci-dessus).
 - **Étape 6** : forum par question, modération, paiement Stripe (20 € pour 335 jours).
 - **Étape 7** : notifications, déploiement (dont la tâche horaire), tests de bout en bout, documentation finale.
