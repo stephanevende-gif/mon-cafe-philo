@@ -1,0 +1,6 @@
+@font-face{font-family:Forum;src:url(node_modules/@fontsource/forum/files/forum-latin-400-normal.woff2) format('woff2');}
+@font-face{font-family:'Source Sans 3';font-weight:400;src:url(node_modules/@fontsource/source-sans-3/files/source-sans-3-latin-400-normal.woff2) format('woff2');}
+@font-face{font-family:'Source Sans 3';font-weight:600;src:url(node_modules/@fontsource/source-sans-3/files/source-sans-3-latin-600-normal.woff2) format('woff2');}
+@font-face{font-family:'Source Sans 3';font-weight:700;src:url(node_modules/@fontsource/source-sans-3/files/source-sans-3-latin-700-normal.woff2) format('woff2');}
+:root{--ivoire:#FDFEF9;--nuit:#1E224A;--anthracite:#2A2A2D;--gris:#535152;--filet:#DAD8CF;--sepia:#943E37;--sepia-pale:#F5E8E3;--orange:#F25C1E}
+*{margin:0;padding:0;box-sizing:border-box}

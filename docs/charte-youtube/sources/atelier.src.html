@@ -1,0 +1,78 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Atelier miniatures M-Éditer</title>
+<style>
+:root{--ivoire:#FDFEF9;--nuit:#1E224A;--gris:#535152;--filet:#DAD8CF;--sepia:#943E37;--sepia-pale:#F5E8E3}
+*{box-sizing:border-box}body{margin:0;background:var(--ivoire);color:#2A2A2D;font:16px/1.5 'Sans6',system-ui,sans-serif}
+header{background:var(--nuit);color:var(--ivoire);padding:18px 24px}header h1{font:32px 'Forum',Georgia,serif;margin:0}
+header p{margin:4px 0 0;opacity:.85}
+main{display:grid;grid-template-columns:minmax(280px,380px) 1fr;gap:28px;padding:24px;max-width:1400px;margin:auto}
+@media(max-width:800px){main{grid-template-columns:1fr}}
+form{display:flex;flex-direction:column;gap:14px}
+label{font-weight:700;color:var(--nuit);display:flex;flex-direction:column;gap:4px}
+label small{font-weight:400;color:var(--gris)}
+input[type=text],textarea,select{font:inherit;padding:9px 10px;border:1px solid var(--filet);border-radius:6px;background:#fff}
+textarea{min-height:90px;resize:vertical}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+button{font:700 16px 'Sans7',system-ui;padding:12px 16px;border-radius:6px;border:0;cursor:pointer}
+.main{background:var(--sepia);color:#fff}.sec{background:var(--sepia-pale);color:var(--sepia)}
+.prev{background:#fff;border:1px solid var(--filet);padding:16px;border-radius:8px;display:flex;justify-content:center;align-items:flex-start}
+canvas{max-width:100%;max-height:78vh;height:auto;box-shadow:0 4px 18px rgba(30,34,74,.15)}
+.tip{background:var(--sepia-pale);padding:12px 14px;border-radius:6px;font-size:14px}
+</style></head><body>
+<header><h1>Atelier miniatures</h1><p>Remplissez les cases, l'image se met à jour, puis cliquez sur « Télécharger l'image ».</p></header>
+<main><form id="f" onsubmit="return false">
+<label>Format
+<select id="format"><option value="conference">Conférence (vidéo longue, 1280 × 720)</option><option value="short">Short (vertical, 1080 × 1920)</option></select></label>
+<label>Question ou titre <small>Une question courte se lit mieux : 12 mots maximum.</small>
+<textarea id="question">Allons-nous laisser les machines juger à notre place ?</textarea></label>
+<label>Intervenant <small>Prénom et nom</small><input type="text" id="auteur" value="Jean-Luc Nativelle"></label>
+<label>Mention en bas <small>Par exemple : Conférence, Extrait, Café philo</small><input type="text" id="mention" value="Conférence"></label>
+<label>Photo (facultative) <small>Portrait de l'intervenant ou image libre de droits</small><input type="file" id="photo" accept="image/*"></label>
+<label>Cadrage de la photo <small>Faites glisser pour remonter ou descendre le visage</small><input type="range" id="cadrage" min="0" max="100" value="30"></label>
+<div class="row"><button class="main" id="dl" type="button">Télécharger l'image</button><button class="sec" id="nophoto" type="button">Retirer la photo</button></div>
+<p class="tip">Sans photo, un grand point d'interrogation remplace la photo. Les couleurs et les polices sont celles de l'application Mon café philo et des couvertures des Éditions M-Éditer.</p>
+</form><div class="prev"><canvas id="c"></canvas></div></main>
+<script>__ASSETS__</script>
+<script>
+const C={ivoire:'#FDFEF9',nuit:'#1E224A',gris:'#535152',sepia:'#943E37',filet:'#DAD8CF',anth:'#2A2A2D'};
+const $=id=>document.getElementById(id);let photo=null;const logo=new Image();logo.src='data:image/png;base64,'+LOGO;
+const fonts=[new FontFace('Forum','url(data:font/woff2;base64,'+FONT_FORUM+')'),new FontFace('Sans6','url(data:font/woff2;base64,'+FONT_SANS6+')',{weight:'600'}),new FontFace('Sans7','url(data:font/woff2;base64,'+FONT_SANS7+')',{weight:'700'})];
+const ready=Promise.all(fonts.map(f=>f.load().then(x=>document.fonts.add(x)))).then(()=>logo.decode().catch(()=>{}));
+function wrap(ctx,text,maxW){const words=[];for(const w of text.trim().split(/\s+/)){if(/^[?!:;»]+$/.test(w)&&words.length)words[words.length-1]+=' '+w;else if(words.length&&words[words.length-1]==='«')words[words.length-1]+=' '+w;else words.push(w)}const lines=[];let cur='';
+ for(const w of words){const t=cur?cur+' '+w:w;if(ctx.measureText(t).width>maxW&&cur){lines.push(cur);cur=w}else cur=t}if(cur)lines.push(cur);return lines}
+function fit(ctx,text,maxW,maxH,big,small,lh,maxLines){for(let s=big;s>=small;s-=2){ctx.font=s+'px Forum';const l=wrap(ctx,text,maxW);if(l.length<=maxLines&&l.length*s*lh<=maxH)return{s,l}}ctx.font=small+'px Forum';return{s:small,l:wrap(ctx,text,maxW)}}
+function drawPhoto(ctx,x,y,w,h,focus){ctx.save();ctx.beginPath();ctx.rect(x,y,w,h);ctx.clip();
+ if(photo){const r=Math.max(w/photo.width,h/photo.height);const pw=photo.width*r,ph=photo.height*r;ctx.drawImage(photo,x+(w-pw)/2,y+(h-ph)*focus,pw,ph)}
+ else{ctx.fillStyle=C.nuit;ctx.fillRect(x,y,w,h);ctx.fillStyle=C.ivoire;ctx.globalAlpha=.95;ctx.textAlign='center';ctx.textBaseline='middle';const s=Math.min(w,h)*.8;ctx.font=s+'px Forum';ctx.fillText('?',x+w/2,y+h/2+s*.05)}
+ ctx.restore()}
+function render(o){const cv=$('c'),ctx=cv.getContext('2d');const conf=o.format==='conference';
+ const W=conf?1280:1080,H=conf?720:1920;cv.width=W;cv.height=H;ctx.fillStyle=C.ivoire;ctx.fillRect(0,0,W,H);
+ const q=o.question.trim().toUpperCase(),a=o.auteur.trim(),m=o.mention.trim();
+ if(conf){const bw=Math.round(W*.29);drawPhoto(ctx,0,0,bw,H,o.focus);ctx.fillStyle=C.sepia;ctx.fillRect(bw,0,8,H);
+  const R=W-60,L=bw+60,mw=R-L;ctx.textAlign='right';ctx.textBaseline='alphabetic';
+  ctx.fillStyle=C.sepia;ctx.font='600 40px Sans6';if(a)ctx.fillText(a,R,104);
+  const t=fit(ctx,q,mw,400,92,50,1.08,4);ctx.fillStyle=C.nuit;ctx.font=t.s+'px Forum';const th=t.l.length*t.s*1.08;let y=330-th/2+t.s*.85;
+  t.l.forEach(l=>{ctx.fillText(l,R,y);y+=t.s*1.08});
+  ctx.fillStyle=C.sepia;ctx.fillRect(R-110,556,110,4);
+  ctx.fillStyle=C.gris;ctx.font='700 26px Sans7';if(m)ctx.fillText(spaced(m.toUpperCase()),R,606);
+  if(logo.complete&&logo.naturalWidth){const lh=40,lw=logo.naturalWidth*lh/logo.naturalHeight;ctx.drawImage(logo,L,H-48-lh,lw,lh)}
+ }else{const ph=800;drawPhoto(ctx,0,0,W,ph,o.focus);ctx.fillStyle=C.sepia;ctx.fillRect(0,ph,W,12);
+  const L=90,mw=W-L-150;ctx.textAlign='left';ctx.textBaseline='alphabetic';
+  ctx.fillStyle=C.sepia;ctx.font='600 52px Sans6';if(a)ctx.fillText(a,L,ph+120);
+  const t=fit(ctx,q,mw,480,104,60,1.08,6);ctx.fillStyle=C.nuit;ctx.font=t.s+'px Forum';let y=ph+200+t.s*.85;t.l.forEach(l=>{ctx.fillText(l,L,y);y+=t.s*1.08});
+  ctx.fillStyle=C.sepia;ctx.fillRect(L,y+10,130,5);
+  ctx.fillStyle=C.gris;ctx.font='700 34px Sans7';if(m)ctx.fillText(spaced(m.toUpperCase()),L,y+80);
+  if(logo.complete&&logo.naturalWidth){const lh=54,lw=logo.naturalWidth*lh/logo.naturalHeight;ctx.drawImage(logo,L,y+130,lw,lh)}}
+ return cv}
+function spaced(s){return s.split('').join(String.fromCharCode(8202))}
+function opts(){return{format:$('format').value,question:$('question').value,auteur:$('auteur').value,mention:$('mention').value,focus:$('cadrage').value/100}}
+function upd(){render(opts())}
+['format','question','auteur','mention','cadrage'].forEach(id=>$(id).addEventListener('input',upd));
+$('format').addEventListener('change',()=>{if($('mention').value==='Conférence'&&$('format').value==='short')$('mention').value='Short · Café philo';else if($('mention').value==='Short · Café philo'&&$('format').value==='conference')$('mention').value='Conférence';upd()});
+$('photo').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{const i=new Image();i.onload=()=>{photo=i;upd()};i.src=r.result};r.readAsDataURL(f)});
+$('nophoto').addEventListener('click',()=>{photo=null;$('photo').value='';upd()});
+$('dl').addEventListener('click',()=>{const o=opts();const name=(o.format==='short'?'short-':'miniature-')+(o.question.normalize('NFD').replace(/[^\w ]/g,'').trim().toLowerCase().replace(/\s+/g,'-').slice(0,50)||'image')+'.png';
+ const a=document.createElement('a');a.download=name;a.href=$('c').toDataURL('image/png');document.body.appendChild(a);a.click();a.remove()});
+window.renderWith=async(o,src)=>{await ready;photo=null;if(src){photo=new Image();photo.src=src;await photo.decode()}return render(o).toDataURL('image/png')};
+ready.then(upd);
+</script></body></html>
