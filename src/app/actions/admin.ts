@@ -219,3 +219,23 @@ export async function adminRole(fd: FormData) {
   await db.update(users).set({ role }).where(eq(users.id, id));
   redirect("/admin/utilisateurs?message=sauve");
 }
+
+// ---------- synchronisation ----------
+
+export async function syncNow() {
+  await requireEditor();
+  const { runScheduledTasks } = await import("@/lib/automation");
+  const { aiEnabled, proposeSheet } = await import("@/lib/ai");
+  const r = await runScheduledTasks(db, {
+    apiKey: process.env.YOUTUBE_API_KEY,
+    playlistId: process.env.YOUTUBE_PLAYLIST_ID || undefined,
+    propose: aiEnabled() ? proposeSheet : undefined,
+  });
+  revalidatePath("/admin", "layout");
+  const parts: string[] = [];
+  if (!process.env.YOUTUBE_API_KEY) parts.push("Clé YouTube manquante : seule la programmation a été faite.");
+  else if (r.syncError) parts.push(`Lecture de la playlist impossible : ${r.syncError}`);
+  else if (r.sync) parts.push(`${r.sync.newShorts} nouveau(x) Short(s), ${r.sync.queued} en file.`);
+  parts.push(...r.plans.map((p) => `${p.day} : ${p.action === "deja_prete" ? "fiche validée prête" : p.action === "rediffusion" ? "rediffusion programmée" : "fiche de secours"}.`));
+  redirect(`/admin/synchronisation?message=${encodeURIComponent(parts.join(" "))}`);
+}

@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, ilike, isNotNull, lte, or } from "drizzle-orm";
+import { and, asc, desc, eq, gte, ilike, isNotNull, isNull, lte, or } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import type { Db } from "@/db";
 import { books, sheets, speakers, videos, type Book, type Sheet, type Speaker, type Video } from "@/db/schema";
@@ -73,7 +73,7 @@ export interface ArchiveFilters {
 
 export async function searchArchives(db: Db, filters: ArchiveFilters, today: string) {
   const shortVideo = alias(videos, "short_video");
-  const conds = [eq(sheets.status, "validee"), isNotNull(sheets.day), lte(sheets.day, today)];
+  const conds = [eq(sheets.status, "validee"), isNotNull(sheets.day), lte(sheets.day, today), isNull(sheets.replayOf)];
   if (filters.theme) conds.push(eq(sheets.theme, filters.theme));
   if (filters.from) conds.push(gte(sheets.day, filters.from));
   if (filters.to) conds.push(lte(sheets.day, filters.to));

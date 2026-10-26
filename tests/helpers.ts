@@ -8,7 +8,7 @@ export async function testDb() {
   const { db, pool } = createDb(url);
   await migrate(db, { migrationsFolder: "drizzle" });
   await db.execute(
-    sql`truncate users, sessions, email_tokens, rate_events, access_periods, speakers, videos, books, sheets, notebook_entries cascade`,
+    sql`truncate users, sessions, email_tokens, rate_events, access_periods, speakers, videos, books, sheets, notebook_entries, sync_runs cascade`,
   );
   return { db, close: () => pool.end() };
 }

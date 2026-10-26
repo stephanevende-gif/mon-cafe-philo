@@ -24,6 +24,13 @@ export default async function Page({ params, searchParams }: Props) {
     <div className="stack-lg narrow">
       <h1 className="page-title">{isNew ? "Nouvelle fiche" : "Modifier la fiche"}</h1>
       <Notice code={sp.message} />
+      {sheet?.aiDrafted && (
+        <p className="notice error" role="note">
+          Thème, question ou synthèse proposés par un outil d&apos;IA à partir du titre et de la description YouTube. Vérifiez chaque formulation
+          en regardant la vidéo avant de valider : la synthèse reste une synthèse éditoriale, jamais une citation.
+        </p>
+      )}
+      {sheet?.replayOf && <p className="notice ok" role="note">Rediffusion automatique d&apos;une fiche déjà publiée.</p>}
       <form action={saveSheet} className="field-group">
         {sheet && <input type="hidden" name="id" value={sheet.id} />}
         <label>Jour de publication<input type="date" name="jour" id="jour" defaultValue={sheet?.day ?? sp.jour ?? ""} /><span className="hint">Laisser vide pour une fiche non programmée ou de secours. Le sujet change à minuit, heure de Paris.</span></label>

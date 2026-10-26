@@ -17,7 +17,7 @@ export default async function Page({ searchParams }: Props) {
   return (
     <div className="stack-lg">
       <h1 className="page-title">Vidéos</h1>
-      <p className="muted">Shorts et conférences de la chaîne des Éditions M-Éditer. La détection automatique de la playlist viendra à l&apos;étape 5.</p>
+      <p className="muted">Shorts et conférences de la chaîne des Éditions M-Éditer. Les nouveaux Shorts de la playlist sont détectés automatiquement (voir Synchronisation).</p>
       <Notice code={sp.message} />
       <div className="table-wrap">
         <table>

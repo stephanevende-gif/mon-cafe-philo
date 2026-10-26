@@ -17,6 +17,7 @@ export const accessKindEnum = pgEnum("access_kind", ["essai", "paiement", "attri
 export const videoKindEnum = pgEnum("video_kind", ["short", "conference"]);
 export const sheetStatusEnum = pgEnum("sheet_status", ["brouillon", "a_verifier", "validee"]);
 export const stageEnum = pgEnum("notebook_stage", ["je_pense", "je_suis"]);
+export const runKindEnum = pgEnum("run_kind", ["youtube", "planification"]);
 
 const createdAt = () => timestamp("created_at", { withTimezone: true }).notNull().defaultNow();
 
@@ -102,6 +103,9 @@ export const videos = pgTable("videos", {
   durationSeconds: integer("duration_seconds"),
   publishedAt: timestamp("published_at", { withTimezone: true }),
   description: text("description"),
+  channelId: text("channel_id"),
+  // Vidéo détectée automatiquement dans la playlist (et non saisie à la main).
+  detectedAt: timestamp("detected_at", { withTimezone: true }),
   createdAt: createdAt(),
 });
 
@@ -136,6 +140,10 @@ export const sheets = pgTable(
     authenticityVerifiedBy: uuid("authenticity_verified_by").references(() => users.id, { onDelete: "set null" }),
     sources: text("sources"),
     editorialNotes: text("editorial_notes"),
+    // Rediffusion d'une fiche déjà publiée, quand aucun nouveau Short n'est paru.
+    replayOf: uuid("replay_of"),
+    // Vrai si le thème, la question ou la synthèse ont été proposés par un outil d'IA.
+    aiDrafted: boolean("ai_drafted").notNull().default(false),
     createdAt: createdAt(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -155,6 +163,16 @@ export const notebookEntries = pgTable(
   },
   (t) => [uniqueIndex("notebook_version_idx").on(t.userId, t.sheetId, t.version)],
 );
+
+export const syncRuns = pgTable("sync_runs", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  kind: runKindEnum("kind").notNull(),
+  startedAt: timestamp("started_at", { withTimezone: true }).notNull().defaultNow(),
+  finishedAt: timestamp("finished_at", { withTimezone: true }),
+  ok: boolean("ok"),
+  summary: text("summary"),
+  error: text("error"),
+});
 
 export type User = typeof users.$inferSelect;
 export type Sheet = typeof sheets.$inferSelect;

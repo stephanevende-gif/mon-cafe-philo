@@ -9,8 +9,8 @@ Parcours : **Je pense. Donc ? Je suis.**
 | Étape | Contenu | État |
 |---|---|---|
 | 1–3 | Charte graphique, maquettes smartphone, ordinateur et tablette | Validées |
-| 4 | Comptes, carnet, archives, administration, droits d'accès | Développée, à valider |
-| 5 | Automatisation YouTube (playlist, Shorts, fiches) | À faire |
+| 4 | Comptes, carnet, archives, administration, droits d'accès | Validée |
+| 5 | Automatisation YouTube (playlist, Shorts, fiches) | Développée, à valider |
 | 6 | Forum, modération, paiement Stripe (20 € / 335 jours) | À faire |
 | 7 | Tests, sécurité, déploiement | À faire |
 
@@ -37,6 +37,15 @@ npm run dev                   # http://localhost:3000
 
 Tests : `npm test` (une base `cafephilo_test` est nécessaire, voir `tests/helpers.ts`).
 
+## Automatisation YouTube
+
+- `POST /api/taches`, avec l'en-tête `Authorization: Bearer <CRON_SECRET>`, est à appeler **chaque heure** par le planificateur de l'hébergeur (cron).
+- Chaque appel lit la playlist (`YOUTUBE_API_KEY`, `YOUTUBE_PLAYLIST_ID`), crée une fiche « à vérifier » pour chaque nouveau Short (moins de 3 minutes), cherche la conférence liée dans la description (même chaîne, plus de 15 minutes), puis garantit une fiche validée pour aujourd'hui et demain.
+- Le Short le plus récent publié un jour J est proposé pour J+1 ; les autres vont dans la file éditoriale.
+- Une fiche jamais validée n'est jamais publiée : à défaut, une fiche déjà publiée est rediffusée (pas de répétition sur 60 jours, thèmes et intervenants variés sur 7 jours), sinon la fiche de secours.
+- `ANTHROPIC_API_KEY` (facultatif) active les propositions de thème, question et synthèse par Claude, signalées « IA » et toujours soumises à relecture.
+- Suivi et déclenchement manuel : `/admin/synchronisation`.
+
 ## Règles éditoriales inscrites dans le code
 
 - La mention « Intervention humaine authentique — sélection éditoriale M-Éditer » n'apparaît que si la fiche a été certifiée par un éditeur **et** que l'intervenant du Short a été vérifié (identité, qualification, source).
@@ -49,7 +58,7 @@ Tests : `npm test` (une base `cafephilo_test` est nécessaire, voir `tests/helpe
 ## Organisation du code
 
 - `src/db/schema.ts` : tables (comptes, sessions, accès, intervenants, vidéos, livres, fiches, carnet).
-- `src/lib/` : logique métier (accès, comptes, carnet, fiches, dates de Paris).
+- `src/lib/` : logique métier (accès, comptes, carnet, fiches, dates de Paris, `automation.ts` pour YouTube, `ai.ts` pour l'assistance IA).
 - `src/components/` : écrans Je pense, Donc ?, Je suis.
 - `src/app/admin/` : administration éditoriale.
 - `drizzle/` : migrations SQL.

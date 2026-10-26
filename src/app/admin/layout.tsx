@@ -15,6 +15,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <Link href="/admin/intervenants">Intervenants</Link>
           <Link href="/admin/videos">Vidéos</Link>
           <Link href="/admin/livres">Livres</Link>
+          <Link href="/admin/synchronisation">Synchronisation</Link>
           {user.role === "admin" && <Link href="/admin/utilisateurs">Utilisateurs</Link>}
         </nav>
         {children}

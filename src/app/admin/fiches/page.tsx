@@ -23,7 +23,7 @@ export default async function Page() {
                 <td>{s.day ? formatDayLong(s.day) : s.isBackup ? "Fiche de secours" : "Non programmée"}</td>
                 <td><Link href={`/admin/fiches/${s.id}`}>{s.question}</Link></td>
                 <td>{s.theme}</td>
-                <td><span className={`tag ${STATUS[s.status][1]}`}>{STATUS[s.status][0]}</span>{s.isBackup && s.day ? " · secours" : ""}</td>
+                <td><span className={`tag ${STATUS[s.status][1]}`}>{STATUS[s.status][0]}</span>{s.isBackup && s.day ? " · secours" : ""}{s.replayOf ? " · rediffusion" : ""}{s.aiDrafted ? " · IA" : ""}</td>
                 <td>{s.authenticityVerifiedAt ? <span className="tag ok">vérifiée</span> : <span className="tag neutral">non</span>}</td>
               </tr>
             ))}
