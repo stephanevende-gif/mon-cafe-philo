@@ -10,22 +10,26 @@
 ## Résultats réels (aucune donnée inventée)
 - **852 Shorts détectés**, publiés entre le 18 septembre 2022 et le 24 octobre 2026, tous de la même chaîne.
 - **852 fiches créées**, toutes à l'état « à vérifier ». Aucune n'est publiée sans relecture.
-- **718 fiches (84 %) reliées à leur conférence complète**, soit 246 conférences différentes (de 2012 à 2026).
+- **830 fiches (97 %) reliées à leur conférence ou à un extrait de plus de 3 minutes**, soit 320 vidéos différentes. Au premier essai, avec la règle « plus de 15 minutes », seules 718 fiches (84 %) étaient reliées.
 - **4 vidéos ignorées** car elles durent plus de 3 minutes (ce ne sont pas des Shorts) :
   « Coopérer avec les machines : une nouvelle culture à inventer », « L'expérience esthétique est une expérience de la liberté. », « L'ennemi révèle qui vous êtes vraiment », « Ricœur — De la disproportion à la médiation ».
 - Aucune fiche n'a été programmée pour demain : le dernier Short date du 24 octobre, son jour J+1 (25 octobre) est déjà passé. Les 852 fiches attendent dans la file éditoriale.
 - Exemple : le Short « Quand l'éthique devient violente » (24/10/2026) est relié à la conférence « Une éthique de la violence est-elle possible ? », André Stanguennec (19 min).
 - La liste complète est dans `docs/tests/test-playlist-2026-10-26.csv` (s'ouvre avec Excel).
 
-## Pourquoi 134 Shorts n'ont pas de conférence reliée
-- 118 : la vidéo citée dans la description existe mais dure 15 minutes ou moins (le plus souvent un extrait de 3 à 10 minutes). La règle actuelle exige plus de 15 minutes.
+## Changement demandé par Stéphane (26 octobre 2026)
+- Une vidéo citée dans la description est désormais acceptée dès qu'elle dure plus de 3 minutes (conférence complète ou extrait). Un autre Short n'est jamais rattaché comme conférence.
+- Les écrans (fiche, administration, page « Donc ») indiquent « plus de 3 minutes ». Un test automatique a été ajouté (18 tests passent).
+
+## Pourquoi 22 Shorts n'ont toujours pas de vidéo reliée
+- 6 : la vidéo citée est elle-même un Short (moins de 3 minutes).
 - 5 : le lien est mal écrit dans la description YouTube (par exemple « httpswww.youtube.comwatchv=… », sans « :// »).
 - 5 : la vidéo citée est privée ou supprimée.
 - 4 : la vidéo citée vient d'une autre chaîne.
 - 2 : la description ne contient aucun lien vidéo.
 
 ## Questions pour Stéphane
-1. **Durée minimale d'une conférence** : faut-il accepter aussi les vidéos de 3 à 15 minutes citées dans la description ? Cela relierait environ 70 Shorts de plus.
+1. ~~Durée minimale d'une conférence~~ : réglé, Stéphane a répondu oui (plus de 3 minutes).
 2. **Ancien catalogue** : la première synchronisation met tout l'historique (852 Shorts) en file « à vérifier ». Faut-il le garder comme réserve de fiches à valider petit à petit, ou n'importer que les Shorts récents ?
 3. Les 5 liens mal écrits peuvent être corrigés directement dans YouTube.
 

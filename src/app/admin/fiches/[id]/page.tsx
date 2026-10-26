@@ -49,7 +49,7 @@ export default async function Page({ params, searchParams }: Props) {
           </select>
         </label>
         <label>
-          Conférence longue (plus de 15 minutes, même intervenant)
+          Conférence ou extrait (plus de 3 minutes, même intervenant)
           <select name="conference" id="conference" defaultValue={sheet?.lectureVideoId ?? ""}>
             <option value="">Aucune</option>
             {vids.filter((v) => v.kind === "conference").map((v) => <option key={v.id} value={v.id}>{label(v)}</option>)}

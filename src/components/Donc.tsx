@@ -72,12 +72,12 @@ export async function Donc({ ctx }: { ctx: JourneyContext }) {
           )}
           {d.lecture ? (
             <div className="media">
-              <div className="kind"><span>Conférence</span><span>&gt; 15 min</span></div>
+              <div className="kind"><span>Conférence</span><span>&gt; 3 min</span></div>
               <YouTubePlayer youtubeId={d.lecture.youtubeId} title={d.lecture.title} duration={formatDuration(d.lecture.durationSeconds)} />
               <span className="ttl">{d.lecture.title}</span>
             </div>
           ) : d.short ? (
-            <p className="pending">La conférence longue de cet intervenant n&apos;est pas encore identifiée.</p>
+            <p className="pending">La conférence de cet intervenant n&apos;est pas encore identifiée.</p>
           ) : null}
         </div>
 

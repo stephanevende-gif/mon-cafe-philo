@@ -142,7 +142,7 @@ export async function saveVideo(fd: FormData) {
   const durationSeconds = parseDuration(str(fd, "duree", 10) ?? "");
   if (durationSeconds != null) {
     if (kind === "short" && durationSeconds >= 180) fail("/admin/videos", "Un Short doit durer moins de trois minutes.");
-    if (kind === "conference" && durationSeconds <= 900) fail("/admin/videos", "Une conférence doit durer plus de quinze minutes.");
+    if (kind === "conference" && durationSeconds <= 180) fail("/admin/videos", "Une conférence doit durer plus de trois minutes.");
   }
   const published = str(fd, "publiee", 10);
   const values = {

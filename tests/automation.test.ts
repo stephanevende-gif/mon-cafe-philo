@@ -72,6 +72,18 @@ describe("synchronisation de la playlist", () => {
     expect(runs.every((x) => x.ok)).toBe(true);
   });
 
+  it("rattache aussi un extrait de plus de 3 minutes, mais jamais un autre Short", async () => {
+    vids.shortEEEEE7 = { title: "Short E", description: "Extrait de : https://youtu.be/extraitXXX8", publishedAt: "2026-10-20T08:00:00Z", duration: "PT50S", channelId: CH };
+    vids.extraitXXX8 = { title: "Extrait E", description: "", publishedAt: "2025-01-01T10:00:00Z", duration: "PT7M", channelId: CH };
+    vids.shortFFFFF9 = { title: "Short F", description: "Voir aussi https://youtu.be/shortEEEEE7", publishedAt: "2026-10-19T08:00:00Z", duration: "PT40S", channelId: CH };
+    playlist.push("shortEEEEE7", "shortFFFFF9");
+    const r = await syncPlaylist(ctx.db, { apiKey: "test", fetchImpl: fakeFetch, now: new Date("2026-10-27T13:00:00Z") });
+    expect(r).toMatchObject({ newShorts: 2, lecturesFound: 1 });
+    const shortF = await ctx.db.query.videos.findFirst({ where: eq(videos.youtubeId, "shortFFFFF9") });
+    const sheetF = await ctx.db.query.sheets.findFirst({ where: eq(sheets.shortVideoId, shortF!.id) });
+    expect(sheetF?.lectureVideoId).toBeNull();
+  });
+
   it("utilise les propositions de l'IA sans jamais valider la fiche", async () => {
     vids.shortDDDDD6 = { title: "Short D", description: "Un philosophe parle du temps.", publishedAt: "2026-10-28T08:00:00Z", duration: "PT1M", channelId: CH };
     playlist.push("shortDDDDD6");

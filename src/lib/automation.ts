@@ -7,7 +7,7 @@ import type { SheetProposal } from "./ai";
 
 export const DEFAULT_PLAYLIST = "PL2d4vA4vfs79RPBnT3PFdOjyXaWPdquGv";
 const SHORT_MAX = 180;
-const LECTURE_MIN = 900;
+const LECTURE_MIN = 180;
 const NO_REPEAT_DAYS = 60;
 const DIVERSITY_DAYS = 7;
 
@@ -80,7 +80,7 @@ async function doSync(db: Db, opts: SyncOptions): Promise<SyncReport> {
     return false;
   });
 
-  // Conférences longues : seulement celles citées dans la description, de la même chaîne, de plus de 15 minutes.
+  // Conférences longues : seulement celles citées dans la description, de la même chaîne, de plus de 3 minutes (conférence complète ou extrait).
   const candidates = [...new Set(shorts.flatMap((s) => linkedVideoIds(s.description, s.id)))];
   const linked = new Map((candidates.length ? await getVideos(fetchImpl, opts.apiKey, candidates) : []).map((v) => [v.id, v]));
 
@@ -155,7 +155,7 @@ async function doSync(db: Db, opts: SyncOptions): Promise<SyncReport> {
     const notes = [
       proposal ? "Thème, question et synthèse proposés par un outil d'IA à partir de la description du Short : à vérifier avant validation." : "Thème, question et synthèse à rédiger.",
       proposal?.missing ? `Informations manquantes signalées : ${proposal.missing}` : null,
-      lecture ? null : "Aucune conférence longue de la chaîne n'est citée dans la description : à rechercher.",
+      lecture ? null : "Aucune conférence de la chaîne n'est citée dans la description : à rechercher.",
       "Intervenant à identifier et à vérifier.",
     ].filter(Boolean);
 

@@ -45,7 +45,7 @@ export default async function Page({ searchParams }: Props) {
           Type
           <select name="type" id="type" defaultValue={edit?.kind ?? "short"}>
             <option value="short">Short (moins de 3 minutes)</option>
-            <option value="conference">Conférence (plus de 15 minutes)</option>
+            <option value="conference">Conférence ou extrait (plus de 3 minutes)</option>
           </select>
         </label>
         <label>Durée (min:s ou h:min:s)<input type="text" name="duree" id="duree" defaultValue={formatDuration(edit?.durationSeconds)} placeholder="2:41" /></label>
