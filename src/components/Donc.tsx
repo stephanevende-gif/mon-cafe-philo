@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { cleanTitle } from "@/lib/youtube";
 import { db } from "@/db";
 import { currentAccess, requireUser } from "@/lib/auth";
 import { formatDuration } from "@/lib/dates";
@@ -66,15 +67,15 @@ export async function Donc({ ctx }: { ctx: JourneyContext }) {
           {d.short && (
             <div className="media">
               <div className="kind"><span>Short</span><span>&lt; 3 min</span></div>
-              <YouTubePlayer youtubeId={d.short.youtubeId} title={d.short.title} vertical duration={formatDuration(d.short.durationSeconds)} />
-              <span className="ttl">{d.short.title}</span>
+              <YouTubePlayer youtubeId={d.short.youtubeId} title={cleanTitle(d.short.title)} vertical duration={formatDuration(d.short.durationSeconds)} />
+              <span className="ttl">{cleanTitle(d.short.title)}</span>
             </div>
           )}
           {d.lecture ? (
             <div className="media">
               <div className="kind"><span>Conférence</span><span>&gt; 3 min</span></div>
-              <YouTubePlayer youtubeId={d.lecture.youtubeId} title={d.lecture.title} duration={formatDuration(d.lecture.durationSeconds)} />
-              <span className="ttl">{d.lecture.title}</span>
+              <YouTubePlayer youtubeId={d.lecture.youtubeId} title={cleanTitle(d.lecture.title)} duration={formatDuration(d.lecture.durationSeconds)} />
+              <span className="ttl">{cleanTitle(d.lecture.title)}</span>
             </div>
           ) : d.short ? (
             <p className="pending">La conférence de cet intervenant n&apos;est pas encore identifiée.</p>

@@ -4,6 +4,7 @@ import { sheets, syncRuns, videos } from "@/db/schema";
 import { addDays, parisDay } from "./dates";
 import { getVideos, linkedVideoIds, listPlaylist, type Fetch } from "./youtube-api";
 import type { SheetProposal } from "./ai";
+import { cleanTitle } from "./youtube";
 
 export const DEFAULT_PLAYLIST = "PL2d4vA4vfs79RPBnT3PFdOjyXaWPdquGv";
 const SHORT_MAX = 180;
@@ -190,7 +191,7 @@ function proposalNotes(p: SheetProposal | null): string[] {
 function proposalFields(p: SheetProposal | null, title: string) {
   return {
     theme: p?.theme?.toLowerCase().slice(0, 80) || "à définir",
-    question: p?.question?.slice(0, 300) || `[Question à rédiger] ${title}`.slice(0, 300),
+    question: p?.question?.slice(0, 300) || `[Question à rédiger] ${cleanTitle(title)}`.slice(0, 300),
     synthesis: p?.synthesis?.slice(0, 700) ?? null,
   };
 }

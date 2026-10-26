@@ -6,6 +6,7 @@ import { Notice } from "@/components/Notice";
 import { deleteSheet, draftSheetsWithAi, saveSheet } from "@/app/actions/admin";
 import { aiEnabled } from "@/lib/ai";
 import { formatDate } from "@/lib/dates";
+import { cleanTitle } from "@/lib/youtube";
 
 type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ message?: string; jour?: string }> };
 
@@ -19,7 +20,7 @@ export default async function Page({ params, searchParams }: Props) {
       .from(videos).leftJoin(speakers, eq(speakers.id, videos.speakerId)).orderBy(asc(videos.title)),
     db.select().from(books).orderBy(asc(books.title)),
   ]);
-  const label = (v: (typeof vids)[number]) => `${v.title}${v.speaker ? ` · ${v.speaker}${v.verified ? " ✓" : ""}` : ""}`;
+  const label = (v: (typeof vids)[number]) => `${cleanTitle(v.title)}${v.speaker ? ` · ${v.speaker}${v.verified ? " ✓" : ""}` : ""}`;
 
   return (
     <div className="stack-lg narrow">

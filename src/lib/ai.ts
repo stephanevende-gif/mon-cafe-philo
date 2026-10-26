@@ -1,13 +1,16 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import * as z from "zod/v4";
+import { cleanTitle } from "./youtube";
 
 // L'IA est un assistant éditorial : elle propose, l'équipe M-Éditer valide.
 // Rien de ce qu'elle produit n'est publié sans validation humaine.
 
 const Proposal = z.object({
   theme: z.string().describe("Un seul mot ou une courte expression : liberté, vérité, technique…"),
-  question: z.string().describe("Une vraie question philosophique, courte, ouverte, qui ne contient pas sa réponse."),
+  question: z
+    .string()
+    .describe("Une question philosophique courte, toujours formulée comme une alternative entre deux positions : « … ou … ? ». Elle sert de titre à la fiche."),
   synthesis: z
     .string()
     .nullable()
@@ -22,7 +25,7 @@ On te donne le titre et la description d'une courte vidéo (Short) où un philos
 
 Propose :
 - un thème (un mot ou une courte expression, en minuscules) ;
-- une question philosophique courte, claire et stimulante, qui ne soit ni factuelle ni orientée vers sa propre réponse ;
+- une question philosophique courte, claire et stimulante, qui ne soit ni factuelle ni orientée vers sa propre réponse. Elle sert de titre à la fiche. Elle est TOUJOURS formulée comme une alternative entre deux positions défendables, avec « ou » : par exemple « La technique nous libère-t-elle ou nous asservit-elle ? », « Parler, est-ce transmettre des mots ou partager une présence ? ». Les deux branches doivent être aussi sérieuses l'une que l'autre ;
 - une synthèse de deux phrases, rigoureuse et accessible, qui introduit une distinction, une difficulté ou un paradoxe sans imposer de doctrine.
 
 La synthèse doit rester fidèle à ce que la description permet d'établir sur la pensée de l'intervenant. N'invente aucune citation, aucun titre, aucun diplôme, aucune référence. Si la description ne dit pas assez clairement ce que soutient l'intervenant, mets synthesis à null et explique ce qui manque dans missing.
@@ -53,7 +56,7 @@ export async function proposeSheet(input: { title: string; description: string }
     messages: [
       {
         role: "user",
-        content: `Titre du Short : ${input.title}\n\nDescription :\n${input.description || "(aucune description)"}`,
+        content: `Titre du Short : ${cleanTitle(input.title)}\n\nDescription :\n${input.description || "(aucune description)"}`,
       },
     ],
   });
