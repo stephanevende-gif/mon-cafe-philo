@@ -30,7 +30,7 @@
 
 ## Questions pour Stéphane
 1. ~~Durée minimale d'une conférence~~ : réglé, Stéphane a répondu oui (plus de 3 minutes).
-2. **Ancien catalogue** : la première synchronisation met tout l'historique (852 Shorts) en file « à vérifier ». Faut-il le garder comme réserve de fiches à valider petit à petit, ou n'importer que les Shorts récents ?
+2. ~~Ancien catalogue~~ : réglé, Stéphane choisit de garder les 852 fiches comme réserve à valider petit à petit (une soixantaine de fiches validées suffisent pour démarrer).
 3. Les 5 liens mal écrits peuvent être corrigés directement dans YouTube.
 
 ## Ce qui reste à faire
