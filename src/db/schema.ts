@@ -91,7 +91,7 @@ export const speakers = pgTable("speakers", {
   verifiedAt: timestamp("verified_at", { withTimezone: true }),
   verifiedBy: uuid("verified_by").references(() => users.id, { onDelete: "set null" }),
   photoUrl: text("photo_url"),
-  // Portrait dessiné en noir et blanc (image PNG), tiré de photoUrl.
+  // Portrait : photo de l'auteur recadrée (JPEG en data URL), tirée de photoUrl.
   portrait: text("portrait"),
   // Fiche auteur sur le site des Éditions M-Éditer, ou à défaut une page qui présente l'auteur.
   profileUrl: text("profile_url"),

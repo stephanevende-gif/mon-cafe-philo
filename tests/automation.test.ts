@@ -162,10 +162,10 @@ describe("brouillons IA pour les fiches déjà importées", () => {
     const [todo] = await ctx.db.insert(sheets).values({ theme: "à définir", question: "?", shortVideoId: sv.id, lectureVideoId: lv.id, status: "a_verifier" }).returning();
     const propose = async () => ({ title: "Interrogeons-nous sur la curiosité", notions: ["la raison"] as Notion[], question: "A ou B ?", synthesis: "Deux phrases.", author: "Marie Curieuse", missing: null });
 
-    expect((await draftWithAi(ctx.db, propose, { sheetIds: [todo.id], drawPortrait: async () => "data:image/png;base64,dessin" })).drafted).toBe(1);
+    expect((await draftWithAi(ctx.db, propose, { sheetIds: [todo.id], portrait: async () => "data:image/jpeg;base64,photo" })).drafted).toBe(1);
     const short = await ctx.db.query.videos.findFirst({ where: eq(videos.id, sv.id) });
     const speaker = await ctx.db.query.speakers.findFirst({ where: eq(speakers.id, short!.speakerId!) });
-    expect(speaker).toMatchObject({ fullName: "Marie Curieuse", qualification: "Marie Curieuse est professeure de philosophie à Nantes.", photoUrl: "https://i.ytimg.com/vi/courtAUTEU1/maxresdefault.jpg", portrait: "data:image/png;base64,dessin", verifiedAt: null });
+    expect(speaker).toMatchObject({ fullName: "Marie Curieuse", qualification: "Marie Curieuse est professeure de philosophie à Nantes.", photoUrl: "https://i.ytimg.com/vi/courtAUTEU1/maxresdefault.jpg", portrait: "data:image/jpeg;base64,photo", verifiedAt: null });
     expect((await ctx.db.query.videos.findFirst({ where: eq(videos.id, lv.id) }))?.speakerId).toBe(speaker!.id);
   });
 });

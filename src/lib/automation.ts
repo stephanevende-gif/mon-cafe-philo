@@ -8,7 +8,7 @@ import type { SheetProposal } from "./ai";
 import { cleanTitle } from "./youtube";
 import { formatNotions } from "./notions";
 import { authorBio, authorLink, isPublisherPage, photoFromProfilePage, publisherPage } from "./authors";
-import { drawPortraitFromUrl } from "./portrait";
+import { portraitFromUrl } from "./portrait";
 
 export const DEFAULT_PLAYLIST = "PL2d4vA4vfs79RPBnT3PFdOjyXaWPdquGv";
 const SHORT_MAX = 180;
@@ -154,7 +154,7 @@ async function doSync(db: Db, opts: SyncOptions): Promise<SyncReport> {
       await attachAuthor(db, proposal.author, [
         { id: short.id, youtubeId: s.id, description: s.description },
         ...(lectureId && lecture ? [{ id: lectureId, youtubeId: lecture.id, description: lecture.description }] : []),
-      ], (url, o) => drawPortraitFromUrl(url, fetchImpl, o));
+      ], (url, o) => portraitFromUrl(url, fetchImpl, o));
     }
 
     // J+1, s'il est encore à venir et libre ; sinon file éditoriale.
@@ -222,7 +222,7 @@ export interface DraftReport {
 export async function draftWithAi(
   db: Db,
   propose: NonNullable<SyncOptions["propose"]>,
-  opts: { sheetIds?: string[]; limit?: number; drawPortrait?: Draw } = {},
+  opts: { sheetIds?: string[]; limit?: number; portrait?: Photo } = {},
 ): Promise<DraftReport> {
   const report: DraftReport = { drafted: 0, failed: [] };
   const lectureVideo = alias(videos, "lecture_video");
@@ -273,7 +273,7 @@ export async function draftWithAi(
       await attachAuthor(db, proposal.author, [
         { id: sheet.shortVideoId, youtubeId, description },
         ...(lecture?.id ? [{ id: lecture.id, youtubeId: lecture.youtubeId!, description: lecture.description }] : []),
-      ], opts.drawPortrait);
+      ], opts.portrait);
     }
     report.drafted++;
   }
@@ -306,13 +306,13 @@ const BIO_TODO = "Présentation à compléter : la description YouTube ne prése
 // Rattache l'auteur nommé dans la description aux vidéos qui n'en ont pas encore.
 // Sa présentation est reprise telle quelle de la description du Short ou de la vidéo longue ;
 // il reste « non vérifié » tant qu'un membre de l'équipe ne l'a pas contrôlé.
-type Draw = (url: string, opts?: { short?: boolean }) => Promise<string | null>;
+type Photo = (url: string, opts?: { short?: boolean }) => Promise<string | null>;
 
 export async function attachAuthor(
   db: Db,
   name: string,
   vids: { id: string; youtubeId: string; description: string | null }[],
-  draw: Draw = (url, o) => drawPortraitFromUrl(url, fetch, o),
+  photo: Photo = (url, o) => portraitFromUrl(url, fetch, o),
 ) {
   const fullName = name.trim().slice(0, 120);
   if (!fullName) return;
@@ -326,15 +326,15 @@ export async function attachAuthor(
 
   let speaker = await db.query.speakers.findFirst({ where: sql`lower(${speakers.fullName}) = lower(${fullName})` });
   if (!speaker) {
-    // Portrait : l'image de la vidéo longue (ou du Short) de la chaîne, transformée en dessin ; l'équipe peut la remplacer.
-    // À défaut de photo sur la fiche auteur : l'image du Short, recadrée sur le visage
+    // Portrait : la vraie photo de la fiche auteur M-Éditer ; l'équipe peut la remplacer.
+    // À défaut : l'image du Short, recadrée sur le visage
     // (les vignettes des vidéos longues portent souvent un titre en surimpression).
     const profileUrl = await findProfile(db, fullName, vids);
     const fromProfile = await profilePhoto(profileUrl, fullName);
     const photoUrl = fromProfile ?? `https://i.ytimg.com/vi/${vids[0].youtubeId}/maxresdefault.jpg`;
     [speaker] = await db
       .insert(speakers)
-      .values({ fullName, qualification, qualificationSource, photoUrl, portrait: await draw(photoUrl, { short: !fromProfile }), profileUrl })
+      .values({ fullName, qualification, qualificationSource, photoUrl, portrait: await photo(photoUrl, { short: !fromProfile }), profileUrl })
       .returning();
   }
   if (!speaker.verifiedAt && speaker.qualification === BIO_TODO && withBio) {

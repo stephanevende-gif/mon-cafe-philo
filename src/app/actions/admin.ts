@@ -10,7 +10,7 @@ import { requireAdmin, requireEditor } from "@/lib/auth";
 import { isDay } from "@/lib/dates";
 import { parseDuration, parseYouTubeId } from "@/lib/youtube";
 import { formatNotions, isNotion } from "@/lib/notions";
-import { drawPortraitFromUrl } from "@/lib/portrait";
+import { portraitFromUrl } from "@/lib/portrait";
 
 const UUID = /^[0-9a-f-]{36}$/;
 
@@ -124,14 +124,14 @@ export async function saveSpeaker(fd: FormData) {
   if (verified && !qualificationSource) fail("/admin/intervenants", "Indiquez la source qui permet de vérifier la qualification.");
   const previous = id ? await db.query.speakers.findFirst({ where: eq(speakers.id, id) }) : null;
   const photoUrl = httpsUrl(str(fd, "photo", 500));
-  // Le portrait dessiné est refait quand l'image de départ change (ou à la demande).
-  const redraw = photoUrl && (photoUrl !== previous?.photoUrl || !previous?.portrait || fd.get("redessiner") === "on");
+  // Le portrait (photo recadrée gardée dans l'application) est refait quand la photo change (ou à la demande).
+  const redraw = photoUrl && (photoUrl !== previous?.photoUrl || !previous?.portrait || fd.get("reprendre") === "on");
   const values = {
     fullName,
     qualification,
     qualificationSource,
     photoUrl,
-    portrait: !photoUrl ? null : redraw ? await drawPortraitFromUrl(photoUrl) : previous?.portrait ?? null,
+    portrait: !photoUrl ? null : redraw ? await portraitFromUrl(photoUrl) : previous?.portrait ?? null,
     profileUrl: httpsUrl(str(fd, "presentation", 500)?.replace(/^http:\/\//, "https://") ?? null),
     verifiedAt: verified ? previous?.verifiedAt ?? new Date() : null,
     verifiedBy: verified ? previous?.verifiedBy ?? editor.id : null,
