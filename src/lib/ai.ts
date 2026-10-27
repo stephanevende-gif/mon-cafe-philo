@@ -259,3 +259,22 @@ export async function chooseBookCover(covers: Buffer[], r: { philosopher: string
   const n = response.parsed_output?.image;
   return n && n >= 1 && n <= covers.length ? n - 1 : null;
 }
+
+const BooksChoice = z.object({
+  books: z.array(z.number().int()).describe("Numéros des livres retenus (1 pour le premier), du plus utile au moins utile, trois au plus."),
+});
+
+// Bibliographie de l'auteur : l'IA choisit seulement, parmi ses livres publiés, ceux qui éclairent le mieux la question.
+export async function chooseAuthorBooks(question: string, titles: string[], client = defaultClient()): Promise<number[] | null> {
+  const response = await client.beta.messages.parse({
+    model: "claude-opus-5-5",
+    max_tokens: 500,
+    betas: ["server-side-fallback-2026-07-01"],
+    fallbacks: "default",
+    output_config: { effort: "low", format: betaZodOutputFormat(BooksChoice) },
+    system: "Tu aides les Éditions M-Éditer à présenter, sous une question philosophique, les livres de l'auteur qui permettent d'approfondir sa pensée sur cette question. Choisis au plus trois livres dans la liste, d'après leurs titres, en commençant par le plus proche de la question.",
+    messages: [{ role: "user", content: `Question : ${question}\n\nLivres de l'auteur :\n${titles.map((t, i) => `${i + 1}. ${t}`).join("\n")}` }],
+  });
+  if (response.stop_reason === "refusal") return null;
+  return response.parsed_output?.books.map((n) => n - 1) ?? null;
+}

@@ -1,0 +1,1 @@
+ALTER TABLE "sheets" ADD COLUMN "author_books" jsonb;

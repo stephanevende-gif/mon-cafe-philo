@@ -4,6 +4,7 @@ import { formatDate, formatTime } from "@/lib/dates";
 import type { JourneyContext } from "@/lib/journey";
 import { listEntries } from "@/lib/notebook";
 import { saveReflection } from "@/app/actions/notebook";
+import { getSheetDetails } from "@/lib/sheets";
 import { Steps } from "./Steps";
 import { Question } from "./Question";
 import { Support } from "./Support";
@@ -39,6 +40,8 @@ export async function JeSuis({ ctx, message }: { ctx: JourneyContext; message?: 
     );
   }
   const entries = await listEntries(db, user.id, ctx.sheet.id);
+  const authorBooks = ctx.sheet.authorBooks ?? [];
+  const author = authorBooks.length ? ((await getSheetDetails(db, ctx.sheet)).short?.speaker ?? null) : null;
   const shown = entries.length > 2 ? [entries[0], entries[entries.length - 1]] : entries;
   // À partir de la version 3, le lecteur est invité à proposer sa solution au problème posé par la question.
   const helpSolution = entries.length >= 2 && !!ctx.sheet.solutionQuestion;
@@ -127,6 +130,28 @@ export async function JeSuis({ ctx, message }: { ctx: JourneyContext; message?: 
                       <cite>{r.book}</cite>
                       {r.part && <span className="partie">{r.part}</span>}
                       <p>{r.description}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </section>
+          )}
+          {author && authorBooks.length > 0 && (
+            <section className="lectures bibliographie" aria-labelledby="bibliographie-titre">
+              <span className="step-label">Aux Éditions M-Éditer</span>
+              <h2 id="bibliographie-titre" className="invite">Bibliographie de {author.fullName}</h2>
+              <ol>
+                {authorBooks.map((b) => (
+                  <li key={b.url} className={b.cover ? "avec-couverture" : undefined}>
+                    {b.cover && (
+                      <a href={b.url} target="_blank" rel="noopener noreferrer" aria-label={`${b.title}, sur le site des Éditions M-Éditer`}>
+                        <img className="couverture" src={b.cover} alt={`Couverture de ${b.title}, ${author.fullName}`} />
+                      </a>
+                    )}
+                    <div className="texte">
+                      <cite><a href={b.url} target="_blank" rel="noopener noreferrer">{b.title}</a></cite>
+                      {b.description && <p>{b.description}</p>}
+                      <a className="voir" href={b.url} target="_blank" rel="noopener noreferrer">Voir le livre sur le site des Éditions →</a>
                     </div>
                   </li>
                 ))}

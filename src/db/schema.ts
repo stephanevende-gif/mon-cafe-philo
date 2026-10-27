@@ -23,6 +23,16 @@ export interface Reading {
   cover?: string;
 }
 
+// Livre de l'auteur de la vidéo aux Éditions M-Éditer, tel que le site le présente.
+export interface AuthorBook {
+  title: string;
+  // Page du livre sur le site des Éditions.
+  url: string;
+  // Deux premières phrases de la présentation du site, sans réécriture.
+  description: string;
+  cover?: string;
+}
+
 export const roleEnum = pgEnum("role", ["membre", "editeur", "admin"]);
 export const tokenPurposeEnum = pgEnum("token_purpose", ["verification", "reinitialisation"]);
 export const accessKindEnum = pgEnum("access_kind", ["essai", "paiement", "attribution"]);
@@ -157,6 +167,8 @@ export const sheets = pgTable(
     solutionQuestion: text("solution_question"),
     // Fin de la page « Je suis » : trois philosophes à lire, chacun avec un livre et deux phrases de présentation.
     readings: jsonb("readings").$type<Reading[]>(),
+    // Bibliographie de l'auteur aux Éditions M-Éditer (jusqu'à trois livres).
+    authorBooks: jsonb("author_books").$type<AuthorBook[]>(),
     shortVideoId: uuid("short_video_id").references(() => videos.id, { onDelete: "set null" }),
     lectureVideoId: uuid("lecture_video_id").references(() => videos.id, { onDelete: "set null" }),
     bookId: uuid("book_id").references(() => books.id, { onDelete: "set null" }),

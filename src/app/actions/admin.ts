@@ -287,12 +287,13 @@ export async function adminRole(fd: FormData) {
 export async function syncNow() {
   await requireEditor();
   const { runScheduledTasks } = await import("@/lib/automation");
-  const { aiEnabled, chooseFlatteringFrame, proposeSheet } = await import("@/lib/ai");
+  const { aiEnabled, chooseAuthorBooks, chooseFlatteringFrame, proposeSheet } = await import("@/lib/ai");
   const r = await runScheduledTasks(db, {
     apiKey: process.env.YOUTUBE_API_KEY,
     playlistId: process.env.YOUTUBE_PLAYLIST_ID || undefined,
     propose: aiEnabled() ? proposeSheet : undefined,
     chooseFrame: aiEnabled() ? (frames) => chooseFlatteringFrame(frames) : undefined,
+    chooseBooks: aiEnabled() ? (question, titles) => chooseAuthorBooks(question, titles) : undefined,
   });
   revalidatePath("/admin", "layout");
   const parts: string[] = [];
