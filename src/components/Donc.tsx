@@ -75,7 +75,7 @@ export async function Donc({ ctx }: { ctx: JourneyContext }) {
         <div className="medias">
           {d.short && (
             <div className="media">
-              <div className="kind"><span>Écouter l&apos;auteur</span></div>
+              <div className="kind"><span>Écouter l&apos;auteur sur cette question</span></div>
               <YouTubePlayer youtubeId={d.short.youtubeId} title={cleanTitle(d.short.title)} vertical duration={formatDuration(d.short.durationSeconds)} />
               <span className="ttl">{cleanTitle(d.short.title)}</span>
             </div>
