@@ -1,43 +1,63 @@
 import sharp from "sharp";
 
-// Portrait dessiné en noir et blanc, à la manière des illustrations de presse :
-// contours à l'encre et ombres en hachures, tiré d'une image des vidéos de la chaîne.
-// Le résultat est une image PNG (data URL) prête à être affichée.
+// Portrait dessiné au crayon, rehaussé à l'encre, sur papier blanc, tiré d'une image des vidéos de la chaîne :
+// gris doux du graphite, traits plus noirs sur les contours, hachures légères dans les ombres,
+// et bords laissés « non finis » qui se fondent dans le blanc.
+// Le résultat est une image PNG en niveaux de gris (data URL) prête à être affichée.
 
-const SIZE = 420;
-const INK = 24; // presque noir
+const SIZE = 480;
 
 export async function drawPortrait(image: Buffer): Promise<string> {
-  const { data, info } = await sharp(image)
-    .resize(SIZE, SIZE, { fit: "cover", position: sharp.strategy.attention })
-    .grayscale()
+  const base = sharp(image).resize(SIZE, SIZE, { fit: "cover", position: sharp.strategy.attention }).grayscale().normalise();
+  const gray = await base.clone().raw().toBuffer();
+  // Négatif flouté : sert au « fondu-densité » qui donne l'aspect graphite.
+  const blurredNegative = await base.clone().negate({ alpha: false }).blur(9).raw().toBuffer();
+  // Ombres adoucies pour placer les hachures.
+  const soft = await base.clone().blur(3).raw().toBuffer();
+  // Texture de traits de crayon : bruit étiré en diagonale.
+  const noise = Buffer.alloc(SIZE * SIZE);
+  let seed = 12345;
+  for (let i = 0; i < noise.length; i++) {
+    seed = (Math.imul(seed, 1103515245) + 12345) >>> 0;
+    noise[i] = seed >>> 24;
+  }
+  const k = 15;
+  const kernel = Array.from({ length: k * k }, (_, i) => (Math.floor(i / k) === k - 1 - (i % k) ? 1 : 0));
+  const strokes = await sharp(noise, { raw: { width: SIZE, height: SIZE, channels: 1 } })
+    .convolve({ width: k, height: k, kernel })
     .normalise()
-    .blur(0.9)
     .raw()
-    .toBuffer({ resolveWithObject: true });
+    .toBuffer();
+  // Bruit à grande échelle : contour irrégulier de la zone dessinée.
+  const patches = await sharp(noise, { raw: { width: SIZE, height: SIZE, channels: 1 } }).blur(18).normalise().raw().toBuffer();
 
-  const w = info.width;
-  const h = info.height;
-  const at = (x: number, y: number) => data[Math.min(h - 1, Math.max(0, y)) * w + Math.min(w - 1, Math.max(0, x))];
-  const out = Buffer.alloc(w * h, 255);
+  const w = SIZE;
+  const at = (buf: Buffer, x: number, y: number) => buf[Math.min(w - 1, Math.max(0, y)) * w + Math.min(w - 1, Math.max(0, x))];
+  const out = Buffer.alloc(w * w);
+  const c = w / 2;
 
-  for (let y = 0; y < h; y++) {
+  for (let y = 0; y < w; y++) {
     for (let x = 0; x < w; x++) {
-      const v = at(x, y);
-      // Contours (Sobel).
-      const gx = at(x + 1, y - 1) + 2 * at(x + 1, y) + at(x + 1, y + 1) - at(x - 1, y - 1) - 2 * at(x - 1, y) - at(x - 1, y + 1);
-      const gy = at(x - 1, y + 1) + 2 * at(x, y + 1) + at(x + 1, y + 1) - at(x - 1, y - 1) - 2 * at(x, y - 1) - at(x + 1, y - 1);
-      const edge = Math.hypot(gx, gy) > 170;
-      // Hachures : plus l'image est sombre, plus les traits sont serrés et croisés.
-      const d1 = (x + y) % 6 === 0;
-      const d2 = (x - y + 6 * h) % 6 === 0;
-      const d3 = (x + y) % 3 === 0;
-      const ink = edge || (v < 165 && d1) || (v < 105 && d2) || (v < 50 && d3) || v < 18;
-      if (ink) out[y * w + x] = INK;
+      const i = y * w + x;
+      // 1. Crayon : fondu-densité du gris par son négatif flouté.
+      let v = Math.min(255, (gray[i] * 255) / (256 - blurredNegative[i]));
+      // 2. Encre : traits noirs là où le contraste est fort.
+      const gx = at(soft, x + 1, y) - at(soft, x - 1, y);
+      const gy = at(soft, x, y + 1) - at(soft, x, y - 1);
+      const edge = Math.min(1, Math.max(0, (Math.hypot(gx, gy) - 18) / 40));
+      v *= 1 - 0.75 * edge;
+      // 3. Hachures au crayon dans les ombres, plus marquées quand c'est sombre.
+      const shade = Math.max(0, (150 - soft[i]) / 150);
+      v *= 1 - shade * 0.55 * (strokes[i] / 255);
+      // 4. Bords non finis : le dessin se perd dans le papier, de façon irrégulière.
+      const r = Math.hypot(x - c, (y - c) * 0.85) / c + (patches[i] / 255 - 0.5) * 0.3 + (strokes[i] / 255 - 0.5) * 0.08;
+      const fade = Math.min(1, Math.max(0, (r - 0.5) / 0.32));
+      v = v + (255 - v) * fade;
+      out[i] = Math.round(Math.max(0, Math.min(255, v)));
     }
   }
 
-  const png = await sharp(out, { raw: { width: w, height: h, channels: 1 } }).png({ palette: true, colours: 2 }).toBuffer();
+  const png = await sharp(out, { raw: { width: w, height: w, channels: 1 } }).linear(1.08, -10).png().toBuffer();
   return `data:image/png;base64,${png.toString("base64")}`;
 }
 
