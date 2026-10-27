@@ -47,7 +47,7 @@ export default async function Page({ params, searchParams }: Props) {
         <label>Jour de publication<input type="date" name="jour" id="jour" defaultValue={sheet?.day ?? sp.jour ?? ""} /><span className="hint">Laisser vide pour une fiche non programmée ou de secours. Le sujet change à minuit, heure de Paris.</span></label>
         <label>Titre<input type="text" name="titre" id="titre" maxLength={200} defaultValue={sheet?.title ?? ""} placeholder="Interrogeons-nous sur…" /></label>
         <fieldset className="notions">
-          <legend>Thème : trois notions du programme de terminale</legend>
+          <legend>Thèmes (trois au plus)</legend>
           {NOTIONS.map((n) => (
             <label className="check" key={n}>
               <input type="checkbox" name="notion" value={n} defaultChecked={current.includes(n)} />
