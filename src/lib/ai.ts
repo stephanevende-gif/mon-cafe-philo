@@ -7,6 +7,12 @@ import { NOTIONS } from "./notions";
 // L'IA est un assistant éditorial : elle propose, l'équipe M-Éditer valide.
 // Rien de ce qu'elle produit n'est publié sans validation humaine.
 
+const ReadingSchema = z.object({
+  philosopher: z.string().describe("Nom complet d'un philosophe réel, tel qu'il est usuellement cité."),
+  book: z.string().describe("Titre exact, en français, d'un livre réellement écrit par ce philosophe."),
+  description: z.string().describe("Deux phrases : ce que le livre apporte pour approfondir la question."),
+});
+
 const Proposal = z.object({
   title: z
     .string()
@@ -27,6 +33,9 @@ const Proposal = z.object({
   solutionQuestion: z
     .string()
     .describe("Une seule question de solution, qui commence par « Quelle solution adopter pour à la fois… » et demande comment garder ce que chaque branche a de juste sans courir le risque qu'elle comporte."),
+  readings: z
+    .array(ReadingSchema)
+    .describe("Trois philosophes à lire pour approfondir la question, chacun avec un livre ; liste vide si tu n'es pas certain des titres."),
   author: z
     .string()
     .nullable()
@@ -44,6 +53,12 @@ Exemple pour la question « Confier nos jugements aux machines, est-ce corriger 
 problem : « Laisser la machine juger à notre place, c'est manquer de sagesse, d'autonomie et de responsabilité. Mais refuser d'utiliser les machines, c'est se condamner à être anachronique. »
 solutionQuestion : « Quelle solution adopter pour à la fois utiliser les machines au nom du progrès sans courir le risque de l'irresponsabilité, et garantir notre autonomie de jugement sans courir le risque d'être passéiste en renonçant au progrès technique ? »`;
 
+const READING_RULES = `Pour approfondir la question, propose trois philosophes et, pour chacun, un livre qui éclaire directement la question, présenté en deux phrases accessibles (ce que l'on y trouve, et en quoi cela aide à surmonter le problème).
+- Ne cite que des philosophes réels et des livres dont tu es certain qu'ils existent et qu'ils sont bien de cet auteur, avec leur titre français usuel. Préfère les œuvres classiques et reconnues.
+- N'invente jamais de titre, de chapitre, de citation, d'édition ni de date. En cas de doute sur un titre, choisis un autre livre ; si tu ne peux pas en proposer trois avec certitude, propose-en moins.
+- Ne cite pas l'intervenant de la vidéo : ces lectures viennent compléter son approche.
+- Les trois philosophes représentent si possible des positions différentes sur la question.`;
+
 const SYSTEM = `Tu aides l'équipe éditoriale des Éditions M-Éditer, maison d'édition philosophique, à préparer la fiche quotidienne de l'application « Mon café philo ».
 On te donne le titre et la description d'une courte vidéo (Short) où un philosophe ou un universitaire réel s'exprime.
 
@@ -52,9 +67,12 @@ Propose :
 - le thème : les trois notions du programme officiel de philosophie de terminale (voie générale) les plus utiles pour travailler la question, choisies uniquement dans cette liste : ${NOTIONS.join(", ")} ;
 - une question philosophique courte, claire et stimulante, qui ne soit ni factuelle ni orientée vers sa propre réponse. Elle est TOUJOURS formulée comme une alternative entre deux positions défendables, avec « ou » : par exemple « La technique nous libère-t-elle ou nous asservit-elle ? », « Parler, est-ce transmettre des mots ou partager une présence ? ». Les deux branches doivent être aussi sérieuses l'une que l'autre ;
 - l'approche de la question par l'auteur : en deux phrases rigoureuses et accessibles, la manière dont l'intervenant aborde et répond à cette question, telle que la description permet de l'établir (champ synthesis). Ce n'est pas une citation : c'est une reformulation fidèle ;
-- le problème à surmonter et la question de solution, adaptés à cette question.
+- le problème à surmonter et la question de solution, adaptés à cette question ;
+- trois philosophes à lire pour approfondir la question (champ readings).
 
 ${PROBLEM_RULES}
+
+${READING_RULES}
 
 L'approche décrite doit rester fidèle à ce que la description permet d'établir sur la pensée de l'intervenant. N'invente aucun nom d'intervenant, aucune citation, aucun titre, aucun diplôme, aucune référence. Si la description ne dit pas assez clairement ce que soutient l'intervenant, mets synthesis à null et explique ce qui manque dans missing.
 Écris en français.`;
@@ -113,4 +131,26 @@ export async function proposeProblem(input: { question: string; synthesis?: stri
   });
   if (response.stop_reason === "refusal") return null;
   return response.parsed_output ?? null;
+}
+
+const ReadingsProposal = z.object({ readings: Proposal.shape.readings });
+
+// Pour une fiche déjà rédigée : propose seulement les trois philosophes à lire.
+export async function proposeReadings(input: { question: string; synthesis?: string | null }, client = defaultClient()) {
+  const response = await client.beta.messages.parse({
+    model: "claude-opus-5-5",
+    max_tokens: 3000,
+    betas: ["server-side-fallback-2026-07-01"],
+    fallbacks: "default",
+    output_config: { effort: "medium", format: betaZodOutputFormat(ReadingsProposal) },
+    system: `Tu aides l'équipe éditoriale des Éditions M-Éditer à terminer la page « Je suis » de l'application « Mon café philo ». Écris en français.\n\n${READING_RULES}`,
+    messages: [
+      {
+        role: "user",
+        content: `Question : ${input.question}${input.synthesis ? `\n\nApproche de l'auteur de la vidéo (pour contexte) : ${input.synthesis}` : ""}`,
+      },
+    ],
+  });
+  if (response.stop_reason === "refusal") return null;
+  return response.parsed_output?.readings ?? null;
 }

@@ -13,7 +13,7 @@ async function main() {
   const { db, pool } = createDb(process.env.DATABASE_URL!);
   const report = await draftWithAi(db, (input) => proposeSheet(input), { limit });
   const rows = await db
-    .select({ title: videos.title, sheetTitle: sheets.title, theme: sheets.theme, question: sheets.question, synthesis: sheets.synthesis, problem: sheets.problem, solutionQuestion: sheets.solutionQuestion, notes: sheets.editorialNotes, status: sheets.status })
+    .select({ title: videos.title, sheetTitle: sheets.title, theme: sheets.theme, question: sheets.question, synthesis: sheets.synthesis, problem: sheets.problem, solutionQuestion: sheets.solutionQuestion, readings: sheets.readings, notes: sheets.editorialNotes, status: sheets.status })
     .from(sheets)
     .innerJoin(videos, eq(videos.id, sheets.shortVideoId))
     .where(eq(sheets.aiDrafted, true));

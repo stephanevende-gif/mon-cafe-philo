@@ -3,6 +3,9 @@ import { resolveJourney } from "@/lib/journey";
 
 export const dynamic = "force-dynamic";
 
-export default async function Page({ params }: { params: Promise<{ day: string }> }) {
-  return <Donc ctx={await resolveJourney((await params).day)} />;
+type Props = { params: Promise<{ day: string }>; searchParams: Promise<{ message?: string }> };
+
+export default async function Page({ params, searchParams }: Props) {
+  const [{ day }, sp] = await Promise.all([params, searchParams]);
+  return <Donc ctx={await resolveJourney(day)} message={sp.message} />;
 }

@@ -71,6 +71,17 @@ export default async function Page({ params, searchParams }: Props) {
           <textarea name="solution" id="solution" maxLength={400} defaultValue={sheet?.solutionQuestion ?? ""} style={{ minHeight: 70 }} placeholder="Quelle solution adopter pour à la fois…" />
           <span className="hint">Affichée avant la version 3 du carnet. Elle ne donne jamais la réponse : la solution revient au lecteur.</span>
         </label>
+        <fieldset className="field-group">
+          <legend>Quels philosophes lire pour approfondir la question ? (fin de la page « Je suis »)</legend>
+          <span className="hint">Trois philosophes, chacun avec un de ses livres et deux phrases de présentation. Vérifiez que chaque livre existe et qu&apos;il est bien de cet auteur.</span>
+          {[0, 1, 2].map((i) => (
+            <div className="stack" key={i} style={{ gap: 6 }}>
+              <label>Philosophe {i + 1}<input type="text" name={`lecture${i + 1}_philosophe`} id={`lecture${i + 1}_philosophe`} maxLength={120} defaultValue={sheet?.readings?.[i]?.philosopher ?? ""} /></label>
+              <label>Livre<input type="text" name={`lecture${i + 1}_livre`} id={`lecture${i + 1}_livre`} maxLength={200} defaultValue={sheet?.readings?.[i]?.book ?? ""} /></label>
+              <label>Présentation en deux phrases<textarea name={`lecture${i + 1}_descriptif`} id={`lecture${i + 1}_descriptif`} maxLength={500} defaultValue={sheet?.readings?.[i]?.description ?? ""} style={{ minHeight: 70 }} /></label>
+            </div>
+          ))}
+        </fieldset>
         <label>
           Short (moins de 3 minutes)
           <select name="short" id="short" defaultValue={sheet?.shortVideoId ?? ""}>

@@ -20,7 +20,8 @@ export async function saveReflection(formData: FormData) {
   const access = await currentAccess();
   if (!access?.active) redirect(`${back}?message=acces`);
   const sheetId = String(formData.get("fiche") ?? "");
-  const stage = formData.get("etape") === "je_suis" ? "je_suis" : "je_pense";
+  const etape = formData.get("etape");
+  const stage = etape === "je_suis" ? "je_suis" : etape === "donc" ? "donc" : "je_pense";
   const body = String(formData.get("texte") ?? "");
   const sheet = /^[0-9a-f-]{36}$/.test(sheetId) ? await getSheetById(db, sheetId) : null;
   if (!sheet || sheet.status !== "validee") redirect(back);
