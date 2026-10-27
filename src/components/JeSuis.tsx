@@ -125,6 +125,7 @@ export async function JeSuis({ ctx, message }: { ctx: JourneyContext; message?: 
                     <div className="texte">
                       <span className="ph">{r.philosopher}</span>
                       <cite>{r.book}</cite>
+                      {r.part && <span className="partie">{r.part}</span>}
                       <p>{r.description}</p>
                     </div>
                   </li>

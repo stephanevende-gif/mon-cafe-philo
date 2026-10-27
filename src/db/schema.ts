@@ -17,6 +17,8 @@ export interface Reading {
   philosopher: string;
   book: string;
   description: string;
+  // Partie du livre qui traite précisément de la question (chapitre, section…), seulement si elle est certaine.
+  part?: string;
   // Couverture du livre (JPEG en data URL), quand une vraie couverture a été trouvée.
   cover?: string;
 }
@@ -121,6 +123,8 @@ export const videos = pgTable("videos", {
   channelId: text("channel_id"),
   // Vidéo détectée automatiquement dans la playlist (et non saisie à la main).
   detectedAt: timestamp("detected_at", { withTimezone: true }),
+  // Image d'attente du lecteur (JPEG en data URL) : vignette de la conférence, ou image de l'auteur tirée du Short.
+  poster: text("poster"),
   createdAt: createdAt(),
 });
 

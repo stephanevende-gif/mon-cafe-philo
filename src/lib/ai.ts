@@ -3,6 +3,7 @@ import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import * as z from "zod/v4";
 import { cleanTitle } from "./youtube";
 import { NOTIONS } from "./notions";
+import { NO_AUTHOR } from "./posters";
 
 // L'IA est un assistant éditorial : elle propose, l'équipe M-Éditer valide.
 // Rien de ce qu'elle produit n'est publié sans validation humaine.
@@ -10,6 +11,10 @@ import { NOTIONS } from "./notions";
 const ReadingSchema = z.object({
   philosopher: z.string().describe("Nom complet d'un philosophe réel, tel qu'il est usuellement cité."),
   book: z.string().describe("Titre exact, en français, d'un livre réellement écrit par ce philosophe."),
+  part: z
+    .string()
+    .nullable()
+    .describe("La partie du livre qui traite précisément de la question (livre, chapitre, section, avec son numéro et son titre usuel), ou null si tu n'en es pas certain."),
   description: z.string().describe("Deux phrases : ce que le livre apporte pour approfondir la question."),
 });
 
@@ -57,7 +62,8 @@ const READING_RULES = `Pour approfondir la question, propose trois philosophes e
 - Ne cite que des philosophes réels et des livres dont tu es certain qu'ils existent et qu'ils sont bien de cet auteur, avec leur titre français usuel. Préfère les œuvres classiques et reconnues.
 - N'invente jamais de titre, de chapitre, de citation, d'édition ni de date. En cas de doute sur un titre, choisis un autre livre ; si tu ne peux pas en proposer trois avec certitude, propose-en moins.
 - Ne cite pas l'intervenant de la vidéo : ces lectures viennent compléter son approche.
-- Les trois philosophes représentent si possible des positions différentes sur la question.`;
+- Les trois philosophes représentent si possible des positions différentes sur la question.
+- Pour chaque livre, indique la partie qui traite précisément de la question (champ part) : le livre, le chapitre ou la section, avec sa numérotation et son titre usuels, par exemple « Livre I, chapitre 8 : « De l'état civil » » pour Du contrat social. N'indique une partie que si tu es certain qu'elle existe sous ce numéro et ce titre et qu'elle traite de la question ; sinon mets null. Une partie inventée est une faute.`;
 
 const SYSTEM = `Tu aides l'équipe éditoriale des Éditions M-Éditer, maison d'édition philosophique, à préparer la fiche quotidienne de l'application « Mon café philo ».
 On te donne le titre et la description d'une courte vidéo (Short) où un philosophe ou un universitaire réel s'exprime.
@@ -153,4 +159,67 @@ export async function proposeReadings(input: { question: string; synthesis?: str
   });
   if (response.stop_reason === "refusal") return null;
   return response.parsed_output?.readings ?? null;
+}
+
+const FrameChoice = z.object({
+  image: z.number().int().describe("Numéro de l'image retenue (1 pour la première), ou 0 si aucune image ne montre le visage de l'auteur."),
+});
+
+// Image d'attente du Short : l'IA choisit, parmi quelques images de la vidéo, celle qui présente l'auteur
+// sous son meilleur jour. Elle ne modifie pas les images.
+export async function chooseFlatteringFrame(frames: Buffer[], client = defaultClient()): Promise<number | null> {
+  const response = await client.beta.messages.parse({
+    model: "claude-opus-5-5",
+    max_tokens: 500,
+    betas: ["server-side-fallback-2026-07-01"],
+    fallbacks: "default",
+    output_config: { effort: "low", format: betaZodOutputFormat(FrameChoice) },
+    system: `Tu aides les Éditions M-Éditer à choisir l'image d'attente d'une courte vidéo où un auteur s'exprime. Choisis l'image qui le présente sous son meilleur jour : visage net et bien visible, regard ouvert, expression naturelle et bienveillante, bouche fermée ou au repos, pas d'image floue ni de grimace en pleine parole, le moins de texte possible devant le visage. Seule une image où l'on voit l'auteur lui-même convient : si aucune ne le montre (images d'illustration, sport, couverture de livre, carton de titre), réponds 0.`,
+    messages: [
+      {
+        role: "user",
+        content: [
+          ...frames.flatMap((f, i) => [
+            { type: "text" as const, text: `Image ${i + 1} :` },
+            { type: "image" as const, source: { type: "base64" as const, media_type: "image/jpeg" as const, data: f.toString("base64") } },
+          ]),
+          { type: "text" as const, text: "Quelle image retenir ?" },
+        ],
+      },
+    ],
+  });
+  if (response.stop_reason === "refusal") return null;
+  const n = response.parsed_output?.image;
+  if (n === 0) return NO_AUTHOR;
+  return n && n >= 1 && n <= frames.length ? n - 1 : null;
+}
+
+const PartsProposal = z.object({
+  parts: z
+    .array(z.string().nullable())
+    .describe("Pour chaque livre, dans l'ordre donné : la partie qui traite précisément de la question, ou null si tu n'en es pas certain."),
+});
+
+// Pour des lectures déjà choisies : précise seulement la partie de chaque livre qui traite de la question.
+export async function proposeReadingParts(
+  input: { question: string; readings: { philosopher: string; book: string }[] },
+  client = defaultClient(),
+): Promise<(string | null)[] | null> {
+  const response = await client.beta.messages.parse({
+    model: "claude-opus-5-5",
+    max_tokens: 2000,
+    betas: ["server-side-fallback-2026-07-01"],
+    fallbacks: "default",
+    output_config: { effort: "medium", format: betaZodOutputFormat(PartsProposal) },
+    system: `Tu aides l'équipe éditoriale des Éditions M-Éditer à préciser les lectures conseillées de l'application « Mon café philo ». Écris en français.\n\n${READING_RULES}`,
+    messages: [
+      {
+        role: "user",
+        content: `Question : ${input.question}\n\nLivres :\n${input.readings.map((r, i) => `${i + 1}. ${r.philosopher}, ${r.book}`).join("\n")}`,
+      },
+    ],
+  });
+  if (response.stop_reason === "refusal") return null;
+  const parts = response.parsed_output?.parts;
+  return parts && parts.length === input.readings.length ? parts : null;
 }

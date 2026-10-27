@@ -81,7 +81,7 @@ export async function Donc({ ctx, message }: { ctx: JourneyContext; message?: st
         {d.short && (
           <div className="media ecouter">
             <div className="kind"><span>Écouter l&apos;auteur sur cette question</span></div>
-            <YouTubePlayer youtubeId={d.short.youtubeId} title={cleanTitle(d.short.title)} vertical duration={formatDuration(d.short.durationSeconds)} />
+            <YouTubePlayer youtubeId={d.short.youtubeId} title={cleanTitle(d.short.title)} vertical duration={formatDuration(d.short.durationSeconds)} poster={d.short.poster} />
             <span className="ttl">{cleanTitle(d.short.title)}</span>
           </div>
         )}
@@ -127,7 +127,7 @@ export async function Donc({ ctx, message }: { ctx: JourneyContext; message?: st
         {d.lecture ? (
           <div className="media loin">
             <div className="kind"><span>Aller plus loin avec l&apos;auteur</span></div>
-            <YouTubePlayer youtubeId={d.lecture.youtubeId} title={cleanTitle(d.lecture.title)} duration={formatDuration(d.lecture.durationSeconds)} />
+            <YouTubePlayer youtubeId={d.lecture.youtubeId} title={cleanTitle(d.lecture.title)} duration={formatDuration(d.lecture.durationSeconds)} poster={d.lecture.poster} />
             <span className="ttl">{cleanTitle(d.lecture.title)}</span>
           </div>
         ) : d.short ? (

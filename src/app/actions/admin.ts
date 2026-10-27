@@ -13,6 +13,7 @@ import { formatNotions, isNotion } from "@/lib/notions";
 import { portraitFromUrl } from "@/lib/portrait";
 import { cleanReadings, keepCovers } from "@/lib/readings";
 import { withCovers } from "@/lib/covers";
+import { fillPosters, replaceShortPoster } from "@/lib/posters";
 
 const UUID = /^[0-9a-f-]{36}$/;
 
@@ -50,6 +51,7 @@ function readingsFrom(fd: FormData) {
     philosopher: String(fd.get(`lecture${i}_philosophe`) ?? ""),
     book: String(fd.get(`lecture${i}_livre`) ?? ""),
     description: String(fd.get(`lecture${i}_descriptif`) ?? ""),
+    part: String(fd.get(`lecture${i}_partie`) ?? ""),
   }));
   const clean = cleanReadings(list);
   return clean.length ? clean : null;
@@ -110,6 +112,8 @@ export async function saveSheet(fd: FormData) {
     editorialNotes: str(fd, "notes", 2000),
     updatedAt: new Date(),
   };
+  // Images d'attente des lecteurs : jamais d'écran noir avant le clic.
+  await fillPosters(db, [shortVideoId, lectureVideoId].filter((v): v is string => !!v), { choose: await frameChooser() });
   try {
     if (id) {
       await db.update(sheets).set(values).where(eq(sheets.id, id));
@@ -123,6 +127,27 @@ export async function saveSheet(fd: FormData) {
     if (code === "23505") fail(back, "Une autre fiche est déjà programmée ce jour-là.");
     throw e;
   }
+}
+
+async function frameChooser() {
+  const { aiEnabled, chooseFlatteringFrame } = await import("@/lib/ai");
+  return aiEnabled() ? (frames: Buffer[]) => chooseFlatteringFrame(frames) : null;
+}
+
+// Image d'attente du Short : l'une des trois images de la vidéo, ou un nouveau choix de l'IA.
+export async function chooseShortPoster(fd: FormData) {
+  await requireEditor();
+  const id = uuid(fd, "id");
+  const videoId = uuid(fd, "video");
+  if (!id || !videoId) fail("/admin/fiches", "Fiche introuvable.");
+  const back = `/admin/fiches/${id}`;
+  const image = String(fd.get("image") ?? "");
+  const chooser = await frameChooser();
+  const choice = ["1", "2", "3"].includes(image) ? Number(image) - 1 : chooser;
+  if (choice === null) fail(back, "Assistance IA désactivée : choisissez l'image 1, 2 ou 3.");
+  if (!(await replaceShortPoster(db, videoId, choice))) fail(back, "Image du Short introuvable sur YouTube.");
+  revalidatePath("/", "layout");
+  redirect(`${back}?message=sauve`);
 }
 
 export async function deleteSheet(fd: FormData) {
@@ -257,11 +282,12 @@ export async function adminRole(fd: FormData) {
 export async function syncNow() {
   await requireEditor();
   const { runScheduledTasks } = await import("@/lib/automation");
-  const { aiEnabled, proposeSheet } = await import("@/lib/ai");
+  const { aiEnabled, chooseFlatteringFrame, proposeSheet } = await import("@/lib/ai");
   const r = await runScheduledTasks(db, {
     apiKey: process.env.YOUTUBE_API_KEY,
     playlistId: process.env.YOUTUBE_PLAYLIST_ID || undefined,
     propose: aiEnabled() ? proposeSheet : undefined,
+    chooseFrame: aiEnabled() ? (frames) => chooseFlatteringFrame(frames) : undefined,
   });
   revalidatePath("/admin", "layout");
   const parts: string[] = [];

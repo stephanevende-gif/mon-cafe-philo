@@ -2,7 +2,7 @@ import "dotenv/config";
 import { and, desc, eq, isNotNull, isNull, notLike, or } from "drizzle-orm";
 import { createDb } from "../src/db";
 import { sheets } from "../src/db/schema";
-import { aiEnabled, proposeProblem, proposeReadings } from "../src/lib/ai";
+import { aiEnabled, proposeProblem, proposeReadingParts, proposeReadings } from "../src/lib/ai";
 import { cleanReadings } from "../src/lib/readings";
 import { withCovers } from "../src/lib/covers";
 
@@ -43,7 +43,18 @@ async function main() {
     await db.update(sheets).set({ readings }).where(eq(sheets.id, s.id));
     covers.push(...readings.map((r) => `${r.philosopher}, ${r.book} : ${r.cover ? "couverture trouvée" : "pas de couverture"}`));
   }
-  console.log(JSON.stringify({ done: done.map((d) => ({ ...d, readings: d.readings?.map(({ cover, ...r }) => ({ ...r, cover: !!cover })) })), covers }, null, 2));
+  // Partie du livre qui traite de la question, sur les lectures enregistrées avant que ce champ existe.
+  // Les livres eux-mêmes ne changent pas ; une partie incertaine reste vide.
+  const parts = [];
+  for (const s of await db.select({ id: sheets.id, question: sheets.question, readings: sheets.readings }).from(sheets).where(isNotNull(sheets.readings))) {
+    if (!s.readings?.length || s.readings.some((r) => "part" in r)) continue;
+    const found = await proposeReadingParts({ question: s.question, readings: s.readings });
+    if (!found) continue;
+    const readings = cleanReadings(s.readings.map((r, i) => ({ ...r, part: found[i] })));
+    await db.update(sheets).set({ readings }).where(eq(sheets.id, s.id));
+    parts.push(...readings.map((r) => `${r.philosopher}, ${r.book} : ${r.part ?? "(partie non précisée)"}`));
+  }
+  console.log(JSON.stringify({ done: done.map((d) => ({ ...d, readings: d.readings?.map(({ cover, ...r }) => ({ ...r, cover: !!cover })) })), covers, parts }, null, 2));
   await pool.end();
 }
 main().catch((e) => { console.error(String(e?.message ?? e)); process.exit(1); });

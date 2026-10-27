@@ -43,6 +43,13 @@
       "when": 1793109336541,
       "tag": "0005_lectures_et_version_donc",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793111104464,
+      "tag": "0006_images_des_lecteurs",
+      "breakpoints": true
     }
   ]
 }
