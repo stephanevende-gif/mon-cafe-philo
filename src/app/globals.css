@@ -129,9 +129,10 @@ textarea { min-height: 160px; resize: vertical; line-height: 1.55; }
 .player { position: relative; background: #2e3445; color: #e8e2d4; border: 0; width: 100%; padding: 0; cursor: pointer; display: flex; align-items: center; justify-content: center; font: inherit; }
 .player.v { aspect-ratio: 9 / 16; }
 .player.h { aspect-ratio: 16 / 9; }
-.player .play { width: 52px; height: 52px; border-radius: 50%; background: rgba(255,255,255,.92); display: flex; align-items: center; justify-content: center; }
-.player .dur { position: absolute; right: 8px; bottom: 8px; background: rgba(0,0,0,.6); padding: 1px 6px; font-size: .75rem; }
-.player .src { position: absolute; left: 8px; top: 6px; font-size: .7rem; opacity: .8; }
+.player .poster { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.player .play { position: relative; width: 52px; height: 52px; border-radius: 50%; background: rgba(255,255,255,.92); display: flex; align-items: center; justify-content: center; }
+.player .dur { position: absolute; right: 8px; bottom: 8px; background: rgba(0,0,0,.6); color: #fff; padding: 1px 6px; font-size: .75rem; }
+.player .src { position: absolute; left: 8px; top: 6px; font-size: .7rem; background: rgba(0,0,0,.55); color: #fff; padding: 1px 6px; }
 .player iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
 .seal { border: 1px solid var(--sepia); background: var(--sepia-pale); padding: 12px 14px; display: flex; gap: 10px; align-items: flex-start; }
 .seal b { display: block; color: var(--sepia); font-size: .88rem; }
@@ -157,8 +158,12 @@ textarea { min-height: 160px; resize: vertical; line-height: 1.55; }
 .lectures { display: grid; gap: 14px; border-top: 1px solid var(--nuit); padding-top: 22px; }
 .lectures ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 18px; }
 .lectures li { display: grid; gap: 4px; }
+.lectures li.avec-couverture { grid-template-columns: 88px 1fr; gap: 16px; align-items: start; }
+.lectures .couverture { width: 88px; height: auto; box-shadow: 0 8px 18px rgba(30,34,74,.22); }
+.lectures .texte { display: grid; gap: 4px; min-width: 0; }
 .lectures .ph { font-family: var(--serif); font-size: 1.25rem; color: var(--nuit); }
 .lectures cite { font-style: italic; color: var(--sepia); font-weight: 600; }
+.lectures .partie { font-size: .9rem; color: var(--nuit); border-left: 2px solid var(--sepia); padding-left: 8px; }
 .lectures p { font-size: .98rem; line-height: 1.55; }
 .version p { font-family: var(--serif); font-size: 1.12rem; line-height: 1.5; white-space: pre-wrap; }
 .side { display: flex; flex-direction: column; gap: 24px; }

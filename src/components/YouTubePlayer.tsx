@@ -8,11 +8,14 @@ export function YouTubePlayer({
   title,
   vertical,
   duration,
+  poster,
 }: {
   youtubeId: string;
   title: string;
   vertical?: boolean;
   duration?: string;
+  // Image d'attente gardée dans l'application (vignette, ou image de l'auteur) : jamais d'écran noir.
+  poster?: string | null;
 }) {
   const [on, setOn] = useState(false);
   const cls = `player ${vertical ? "v" : "h"}`;
@@ -30,6 +33,7 @@ export function YouTubePlayer({
   }
   return (
     <button type="button" className={cls} onClick={() => setOn(true)} aria-label={`Lire la vidéo : ${title} (lecteur YouTube)`}>
+      {poster && <img className="poster" src={poster} alt="" />}
       <span className="src">YouTube</span>
       <span className="play" aria-hidden="true">
         <svg width="18" height="20" viewBox="0 0 16 18"><path d="M0 0 16 9 0 18Z" fill="#1E224A" /></svg>

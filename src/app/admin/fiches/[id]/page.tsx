@@ -3,7 +3,7 @@ import { asc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { books, sheets, speakers, videos } from "@/db/schema";
 import { Notice } from "@/components/Notice";
-import { deleteSheet, draftSheetsWithAi, saveSheet } from "@/app/actions/admin";
+import { chooseShortPoster, deleteSheet, draftSheetsWithAi, saveSheet } from "@/app/actions/admin";
 import { aiEnabled } from "@/lib/ai";
 import { formatDate } from "@/lib/dates";
 import { cleanTitle } from "@/lib/youtube";
@@ -21,6 +21,9 @@ export default async function Page({ params, searchParams }: Props) {
       .from(videos).leftJoin(speakers, eq(speakers.id, videos.speakerId)).orderBy(asc(videos.title)),
     db.select().from(books).orderBy(asc(books.title)),
   ]);
+  const posterOf = async (vid: string | null | undefined) =>
+    vid ? (await db.select({ id: videos.id, poster: videos.poster }).from(videos).where(eq(videos.id, vid)))[0] ?? null : null;
+  const [shortPoster, lecturePoster] = await Promise.all([posterOf(sheet?.shortVideoId), posterOf(sheet?.lectureVideoId)]);
   const current = notionsOf(sheet?.theme ?? "");
   const label = (v: (typeof vids)[number]) => `${cleanTitle(v.title)}${v.speaker ? ` · ${v.speaker}${v.verified ? " ✓" : ""}` : ""}`;
 
@@ -68,7 +71,7 @@ export default async function Page({ params, searchParams }: Props) {
         </label>
         <label>
           Question de solution posée au lecteur
-          <textarea name="solution" id="solution" maxLength={400} defaultValue={sheet?.solutionQuestion ?? ""} style={{ minHeight: 70 }} placeholder="Quelle solution adopter pour à la fois…" />
+          <textarea name="solution" id="solution" maxLength={700} defaultValue={sheet?.solutionQuestion ?? ""} style={{ minHeight: 70 }} placeholder="Quelle attitude adopter (individuelle et collective) pour qu'à la fois nous puissions, d'une part…" />
           <span className="hint">Affichée avant la version 3 du carnet. Elle ne donne jamais la réponse : la solution revient au lecteur.</span>
         </label>
         <fieldset className="field-group">
@@ -76,8 +79,12 @@ export default async function Page({ params, searchParams }: Props) {
           <span className="hint">Trois philosophes, chacun avec un de ses livres et deux phrases de présentation. Vérifiez que chaque livre existe et qu&apos;il est bien de cet auteur.</span>
           {[0, 1, 2].map((i) => (
             <div className="stack" key={i} style={{ gap: 6 }}>
+              {sheet?.readings?.[i]?.cover && (
+                <img src={sheet.readings[i].cover} alt={`Couverture trouvée pour ${sheet.readings[i].book}`} style={{ width: 64, height: "auto" }} />
+              )}
               <label>Philosophe {i + 1}<input type="text" name={`lecture${i + 1}_philosophe`} id={`lecture${i + 1}_philosophe`} maxLength={120} defaultValue={sheet?.readings?.[i]?.philosopher ?? ""} /></label>
               <label>Livre<input type="text" name={`lecture${i + 1}_livre`} id={`lecture${i + 1}_livre`} maxLength={200} defaultValue={sheet?.readings?.[i]?.book ?? ""} /></label>
+              <label>Partie du livre qui traite de la question<input type="text" name={`lecture${i + 1}_partie`} id={`lecture${i + 1}_partie`} maxLength={300} defaultValue={sheet?.readings?.[i]?.part ?? ""} placeholder="Livre I, chapitre 8 : « De l'état civil »" /></label>
               <label>Présentation en deux phrases<textarea name={`lecture${i + 1}_descriptif`} id={`lecture${i + 1}_descriptif`} maxLength={500} defaultValue={sheet?.readings?.[i]?.description ?? ""} style={{ minHeight: 70 }} /></label>
             </div>
           ))}
@@ -123,6 +130,29 @@ export default async function Page({ params, searchParams }: Props) {
         </label>
         <button className="btn primary" type="submit">Enregistrer la fiche</button>
       </form>
+      {sheet && (shortPoster || lecturePoster) && (
+        <section className="field-group">
+          <h2 className="small">Images d&apos;attente des vidéos</h2>
+          <p className="hint">Affichées sur « Donc ? » avant le clic sur le lecteur, à la place d&apos;un écran noir.</p>
+          <div className="row" style={{ alignItems: "flex-start", gap: 16 }}>
+            {shortPoster && (
+              <form action={chooseShortPoster} className="stack" style={{ gap: 6 }}>
+                <input type="hidden" name="id" value={sheet.id} />
+                <input type="hidden" name="video" value={shortPoster.id} />
+                {shortPoster.poster ? <img src={shortPoster.poster} alt="Image d'attente du Short" style={{ width: 120, borderRadius: 4 }} /> : <span className="hint">Short sans image</span>}
+                <select name="image" defaultValue="ia" aria-label="Image du Short">
+                  <option value="ia">Choix de l&apos;IA (image la plus flatteuse, ou portrait de l&apos;auteur)</option>
+                  <option value="1">Image 1 (début)</option>
+                  <option value="2">Image 2 (milieu)</option>
+                  <option value="3">Image 3 (fin)</option>
+                </select>
+                <button className="btn small" type="submit">Changer l&apos;image du Short</button>
+              </form>
+            )}
+            {lecturePoster?.poster && <img src={lecturePoster.poster} alt="Vignette de la conférence" style={{ width: 213, borderRadius: 4 }} />}
+          </div>
+        </section>
+      )}
       {sheet && (
         <form action={deleteSheet}>
           <input type="hidden" name="id" value={sheet.id} />

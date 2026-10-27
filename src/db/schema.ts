@@ -17,6 +17,10 @@ export interface Reading {
   philosopher: string;
   book: string;
   description: string;
+  // Partie du livre qui traite précisément de la question (chapitre, section…), seulement si elle est certaine.
+  part?: string;
+  // Couverture du livre (JPEG en data URL), quand une vraie couverture a été trouvée.
+  cover?: string;
 }
 
 export const roleEnum = pgEnum("role", ["membre", "editeur", "admin"]);
@@ -74,7 +78,7 @@ export const rateEvents = pgTable(
   (t) => [index("rate_events_bucket_idx").on(t.bucket, t.createdAt)],
 );
 
-// Chaque période d'accès : 30 jours d'essai, 335 jours payés, ou attribution manuelle.
+// Chaque période d'accès : 10 jours d'essai, 355 jours payés, ou attribution manuelle.
 export const accessPeriods = pgTable(
   "access_periods",
   {
@@ -119,6 +123,8 @@ export const videos = pgTable("videos", {
   channelId: text("channel_id"),
   // Vidéo détectée automatiquement dans la playlist (et non saisie à la main).
   detectedAt: timestamp("detected_at", { withTimezone: true }),
+  // Image d'attente du lecteur (JPEG en data URL) : vignette de la conférence, ou image de l'auteur tirée du Short.
+  poster: text("poster"),
   createdAt: createdAt(),
 });
 
@@ -146,7 +152,7 @@ export const sheets = pgTable(
     question: text("question").notNull(),
     synthesis: text("synthesis"),
     // Page « Je suis » : le problème que pose l'alternative de la question, puis la question de solution
-    // soumise au lecteur pour sa version 3 (« Quelle solution adopter pour… ? »).
+    // soumise au lecteur pour sa version 3 (« Quelle attitude adopter (individuelle et collective) pour qu'à la fois… ? »).
     problem: text("problem"),
     solutionQuestion: text("solution_question"),
     // Fin de la page « Je suis » : trois philosophes à lire, chacun avec un livre et deux phrases de présentation.

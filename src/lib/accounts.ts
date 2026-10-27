@@ -25,7 +25,7 @@ export async function registerUser(
     .insert(users)
     .values({ email, passwordHash, displayName: input.displayName.trim() })
     .returning();
-  // L'essai de 30 jours commence à l'activation du compte.
+  // L'essai de 10 jours commence à l'activation du compte.
   await startTrial(db, user.id, now);
   const verificationToken = await createEmailToken(db, user.id, "verification", 48 * HOUR);
   return { user, verificationToken };

@@ -11,7 +11,7 @@ Parcours : **Je pense. Donc ? Je suis.**
 | 1–3 | Charte graphique, maquettes smartphone, ordinateur et tablette | Validées |
 | 4 | Comptes, carnet, archives, administration, droits d'accès | Validée |
 | 5 | Automatisation YouTube (playlist, Shorts, fiches) | Développée, à valider |
-| 6 | Forum, modération, paiement Stripe (20 € / 335 jours) | À faire |
+| 6 | Forum, modération, paiement Stripe (20 € / 355 jours) | À faire |
 | 7 | Tests, sécurité, déploiement | À faire |
 
 ## Technique
@@ -54,7 +54,7 @@ Tests : `npm test` (une base `cafephilo_test` est nécessaire, voir `tests/helpe
 - Une fiche ne peut être validée sans synthèse. Un Short dure moins de 3 minutes, une conférence plus de 15.
 - Le sujet change à minuit, heure de Paris. Sans fiche validée pour le jour, une fiche de secours validée est servie, la même pour tous.
 - Le carnet conserve chaque version ; aucune note, aucun score.
-- L'accès : 30 jours gratuits sans carte, puis 335 jours pour 20 €, sans renouvellement automatique. Payer pendant l'essai ne fait perdre aucun jour.
+- L'accès : 10 jours gratuits sans carte, puis 355 jours pour 20 €, sans renouvellement automatique. Payer pendant l'essai ne fait perdre aucun jour.
 
 ## Organisation du code
 

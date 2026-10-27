@@ -1,6 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import { db } from "@/db";
-import { aiEnabled, proposeSheet } from "@/lib/ai";
+import { aiEnabled, chooseFlatteringFrame, proposeSheet } from "@/lib/ai";
 import { runScheduledTasks } from "@/lib/automation";
 
 export const dynamic = "force-dynamic";
@@ -20,6 +20,7 @@ export async function POST(req: Request) {
     apiKey: process.env.YOUTUBE_API_KEY,
     playlistId: process.env.YOUTUBE_PLAYLIST_ID || undefined,
     propose: aiEnabled() ? proposeSheet : undefined,
+    chooseFrame: aiEnabled() ? (frames) => chooseFlatteringFrame(frames) : undefined,
   });
   return Response.json(result);
 }

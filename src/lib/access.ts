@@ -2,9 +2,9 @@ import { eq } from "drizzle-orm";
 import type { Db } from "@/db";
 import { accessPeriods, type AccessPeriod } from "@/db/schema";
 
-export const TRIAL_DAYS = 30;
-export const PAID_DAYS = 335;
-// Tarif validé par les Éditions M-Éditer le 26 octobre 2026.
+export const TRIAL_DAYS = 10;
+export const PAID_DAYS = 355;
+// Tarif validé par les Éditions M-Éditer le 26 octobre 2026, durées revues le 27 octobre 2026.
 export const PRICE_CENTS = 2000;
 
 const DAY_MS = 24 * 60 * 60 * 1000;

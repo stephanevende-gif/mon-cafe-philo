@@ -10,6 +10,7 @@ import { cleanTitle } from "./youtube";
 import { formatNotions } from "./notions";
 import { authorBio, authorLink, isPublisherPage, photoFromProfilePage, bioFromProfilePage, publisherPage } from "./authors";
 import { portraitFromUrl } from "./portrait";
+import { fillPosters, type ChooseFrame } from "./posters";
 
 export const DEFAULT_PLAYLIST = "PL2d4vA4vfs79RPBnT3PFdOjyXaWPdquGv";
 const SHORT_MAX = 180;
@@ -214,7 +215,7 @@ function proposalFields(p: SheetProposal | null, title: string) {
     question: p?.question?.slice(0, 300) || `[Question à rédiger] ${cleanTitle(title)}`.slice(0, 300),
     synthesis: p?.synthesis?.slice(0, 700) ?? null,
     problem: p?.problem?.slice(0, 700) || null,
-    solutionQuestion: p?.solutionQuestion?.slice(0, 400) || null,
+    solutionQuestion: p?.solutionQuestion?.slice(0, 700) || null,
     readings: p?.readings?.length ? cleanReadings(p.readings) : null,
   };
 }
@@ -479,9 +480,9 @@ async function doPlan(db: Db, day: string): Promise<PlanResult> {
 }
 
 // Tâche programmée complète : synchronisation (si la clé est configurée) puis programmation d'aujourd'hui et de demain.
-export async function runScheduledTasks(db: Db, opts: Omit<SyncOptions, "apiKey"> & { apiKey?: string }) {
+export async function runScheduledTasks(db: Db, opts: Omit<SyncOptions, "apiKey"> & { apiKey?: string; chooseFrame?: ChooseFrame }) {
   const now = opts.now ?? new Date();
-  const out: { sync?: SyncReport; syncError?: string; plans: PlanResult[] } = { plans: [] };
+  const out: { sync?: SyncReport; syncError?: string; plans: PlanResult[]; postersError?: string } = { plans: [] };
   if (opts.apiKey) {
     try {
       out.sync = await syncPlaylist(db, { ...opts, apiKey: opts.apiKey, now });
@@ -493,5 +494,21 @@ export async function runScheduledTasks(db: Db, opts: Omit<SyncOptions, "apiKey"
   const today = parisDay(now);
   out.plans.push(await planDay(db, today));
   out.plans.push(await planDay(db, addDays(today, 1)));
+  try {
+    await postersForDays(db, [today, addDays(today, 1)], { choose: opts.chooseFrame, fetchImpl: opts.fetchImpl });
+  } catch (e) {
+    // Sans image d'attente, le lecteur garde son fond uni : la fiche reste servie.
+    out.postersError = (e as Error).message;
+  }
   return out;
+}
+
+// Images d'attente des vidéos des fiches de ces jours et des fiches de secours.
+export async function postersForDays(db: Db, days: string[], opts: { choose?: ChooseFrame; fetchImpl?: Fetch } = {}) {
+  const rows = await db
+    .select({ short: sheets.shortVideoId, lecture: sheets.lectureVideoId })
+    .from(sheets)
+    .where(sql`${inArray(sheets.day, days)} or (${sheets.isBackup} and ${sheets.status} = 'validee')`);
+  const ids = rows.flatMap((r) => [r.short, r.lecture]).filter((id): id is string => !!id);
+  return fillPosters(db, [...new Set(ids)], { choose: opts.choose ?? null, fetchImpl: opts.fetchImpl as typeof fetch | undefined });
 }
