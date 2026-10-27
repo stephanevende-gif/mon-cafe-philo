@@ -21,6 +21,12 @@ const Proposal = z.object({
     .string()
     .nullable()
     .describe("Approche de la question par l'auteur : deux phrases fidèles à l'intervention, ou null si la description ne permet pas de savoir ce que dit l'intervenant."),
+  problem: z
+    .string()
+    .describe("Le problème à surmonter : en deux phrases, ce que l'on risque en choisissant chacune des deux branches de l'alternative de la question."),
+  solutionQuestion: z
+    .string()
+    .describe("Une seule question de solution, qui commence par « Quelle solution adopter pour à la fois… » et demande comment garder ce que chaque branche a de juste sans courir le risque qu'elle comporte."),
   author: z
     .string()
     .nullable()
@@ -30,6 +36,13 @@ const Proposal = z.object({
 
 export type SheetProposal = z.infer<typeof Proposal>;
 
+const PROBLEM_RULES = `Le problème à surmonter et la question de solution aident le lecteur à rédiger sa propre réponse, après avoir réfléchi seul puis écouté l'auteur. Ils ne donnent jamais la solution : c'est au lecteur de la proposer.
+- Le problème (champ problem) explique en deux phrases pourquoi aucune des deux branches de l'alternative ne suffit : ce que l'on risque si l'on choisit la première, ce que l'on risque si l'on choisit la seconde. Il reprend les termes de la question.
+- La question de solution (champ solutionQuestion) commence par « Quelle solution adopter pour à la fois… » et demande comment garder ce que chaque branche a de juste sans courir le risque qu'elle comporte.
+Exemple pour la question « Confier nos jugements aux machines, est-ce corriger nos erreurs ou renoncer à notre sagesse ? » :
+problem : « Laisser la machine juger à notre place, c'est manquer de sagesse, d'autonomie et de responsabilité. Mais refuser d'utiliser les machines, c'est se condamner à être anachronique. »
+solutionQuestion : « Quelle solution adopter pour à la fois utiliser les machines au nom du progrès sans courir le risque de l'irresponsabilité, et garantir notre autonomie de jugement sans courir le risque d'être passéiste en renonçant au progrès technique ? »`;
+
 const SYSTEM = `Tu aides l'équipe éditoriale des Éditions M-Éditer, maison d'édition philosophique, à préparer la fiche quotidienne de l'application « Mon café philo ».
 On te donne le titre et la description d'une courte vidéo (Short) où un philosophe ou un universitaire réel s'exprime.
 
@@ -38,6 +51,9 @@ Propose :
 - le thème : les trois notions du programme officiel de philosophie de terminale (voie générale) les plus utiles pour travailler la question, choisies uniquement dans cette liste : ${NOTIONS.join(", ")} ;
 - une question philosophique courte, claire et stimulante, qui ne soit ni factuelle ni orientée vers sa propre réponse. Elle est TOUJOURS formulée comme une alternative entre deux positions défendables, avec « ou » : par exemple « La technique nous libère-t-elle ou nous asservit-elle ? », « Parler, est-ce transmettre des mots ou partager une présence ? ». Les deux branches doivent être aussi sérieuses l'une que l'autre ;
 - l'approche de la question par l'auteur : en deux phrases rigoureuses et accessibles, la manière dont l'intervenant aborde et répond à cette question, telle que la description permet de l'établir (champ synthesis). Ce n'est pas une citation : c'est une reformulation fidèle ;
+- le problème à surmonter et la question de solution, adaptés à cette question.
+
+${PROBLEM_RULES}
 
 L'approche décrite doit rester fidèle à ce que la description permet d'établir sur la pensée de l'intervenant. N'invente aucun nom d'intervenant, aucune citation, aucun titre, aucun diplôme, aucune référence. Si la description ne dit pas assez clairement ce que soutient l'intervenant, mets synthesis à null et explique ce qui manque dans missing.
 Écris en français.`;
@@ -68,6 +84,29 @@ export async function proposeSheet(input: { title: string; description: string }
       {
         role: "user",
         content: `Titre du Short : ${cleanTitle(input.title)}\n\nDescription :\n${input.description || "(aucune description)"}`,
+      },
+    ],
+  });
+  if (response.stop_reason === "refusal") return null;
+  return response.parsed_output ?? null;
+}
+
+const ProblemProposal = Proposal.pick({ problem: true, solutionQuestion: true });
+export type ProblemProposalT = z.infer<typeof ProblemProposal>;
+
+// Pour une fiche déjà rédigée : propose seulement le problème à surmonter et la question de solution.
+export async function proposeProblem(input: { question: string; synthesis?: string | null }, client = defaultClient()): Promise<ProblemProposalT | null> {
+  const response = await client.beta.messages.parse({
+    model: "claude-opus-5-5",
+    max_tokens: 2000,
+    betas: ["server-side-fallback-2026-07-01"],
+    fallbacks: "default",
+    output_config: { effort: "low", format: betaZodOutputFormat(ProblemProposal) },
+    system: `Tu aides l'équipe éditoriale des Éditions M-Éditer à préparer la page « Je suis » de l'application « Mon café philo ». Écris en français.\n\n${PROBLEM_RULES}`,
+    messages: [
+      {
+        role: "user",
+        content: `Question : ${input.question}${input.synthesis ? `\n\nApproche de l'auteur (pour contexte, ne pas la recopier) : ${input.synthesis}` : ""}`,
       },
     ],
   });

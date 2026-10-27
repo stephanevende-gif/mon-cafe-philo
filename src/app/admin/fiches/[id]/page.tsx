@@ -62,6 +62,16 @@ export default async function Page({ params, searchParams }: Props) {
           <span className="hint">Approche de l&apos;auteur, reformulée fidèlement à partir de l&apos;intervention. Elle n&apos;est jamais présentée comme une citation de l&apos;intervenant.</span>
         </label>
         <label>
+          Le problème à surmonter (page « Je suis »)
+          <textarea name="probleme" id="probleme" maxLength={700} defaultValue={sheet?.problem ?? ""} style={{ minHeight: 90 }} />
+          <span className="hint">Pourquoi aucune des deux branches de l&apos;alternative ne suffit : ce que l&apos;on risque avec l&apos;une, puis avec l&apos;autre.</span>
+        </label>
+        <label>
+          Question de solution posée au lecteur
+          <textarea name="solution" id="solution" maxLength={400} defaultValue={sheet?.solutionQuestion ?? ""} style={{ minHeight: 70 }} placeholder="Quelle solution adopter pour à la fois…" />
+          <span className="hint">Affichée avant la version 3 du carnet. Elle ne donne jamais la réponse : la solution revient au lecteur.</span>
+        </label>
+        <label>
           Short (moins de 3 minutes)
           <select name="short" id="short" defaultValue={sheet?.shortVideoId ?? ""}>
             <option value="">Aucun</option>
