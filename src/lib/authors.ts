@@ -95,3 +95,28 @@ export function photoFromProfilePage(html: string, pageUrl: string, name: string
   }
   return null;
 }
+
+// Présentation de l'auteur sur sa fiche de la boutique M-Éditer (bloc « A propos de l'auteur »),
+// réduite à ses premières phrases ; rien si la page n'en a pas.
+export function bioFromProfilePage(html: string): string | null {
+  const start = html.search(/data-type=["']author-author-biography["']/i);
+  if (start < 0) return null;
+  const rest = html.slice(start).replace(/^[^>]*>/, "");
+  const block = rest.slice(0, rest.search(/data-type=["']/i) >= 0 ? rest.search(/data-type=["']/i) : rest.length);
+  const text = block
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
+    .replace(/&rsquo;|&#x27;|&apos;/g, "’")
+    .replace(/<?\s*div\s+class=.*$/s, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (text.length < 40) return null;
+  let bio = "";
+  for (const sentence of text.match(/[^.!?]+[.!?]+(\s|$)/g) ?? [text]) {
+    bio += sentence;
+    if (bio.length >= 250) break;
+  }
+  return bio.trim().slice(0, 1000) || null;
+}

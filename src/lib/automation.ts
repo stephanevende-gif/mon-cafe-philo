@@ -7,7 +7,7 @@ import { getVideos, linkedVideoIds, listPlaylist, type Fetch } from "./youtube-a
 import type { SheetProposal } from "./ai";
 import { cleanTitle } from "./youtube";
 import { formatNotions } from "./notions";
-import { authorBio, authorLink, isPublisherPage, photoFromProfilePage, publisherPage } from "./authors";
+import { authorBio, authorLink, isPublisherPage, photoFromProfilePage, bioFromProfilePage, publisherPage } from "./authors";
 import { portraitFromUrl } from "./portrait";
 
 export const DEFAULT_PLAYLIST = "PL2d4vA4vfs79RPBnT3PFdOjyXaWPdquGv";
@@ -15,6 +15,9 @@ const SHORT_MAX = 180;
 const LECTURE_MIN = 180;
 const NO_REPEAT_DAYS = 60;
 const DIVERSITY_DAYS = 7;
+// Rediffusions : deux tiers de fiches anciennes, un tiers de fiches récentes (Short publié depuis moins d'un an).
+const RECENT_DAYS = 365;
+const RECENT_SHARE = 1 / 3;
 
 export interface SyncOptions {
   apiKey: string;
@@ -290,18 +293,24 @@ export async function findProfile(db: Db, name: string, vids: { description: str
   return publisherPage(all, name) ?? vids.map((v) => authorLink(v.description)).find(Boolean)?.replace(/^http:\/\//i, "https://") ?? null;
 }
 
-// Photo de l'auteur sur sa fiche des Éditions M-Éditer, si elle en a une.
-export async function profilePhoto(profileUrl: string | null, name: string, fetchImpl: typeof fetch = fetch): Promise<string | null> {
-  if (!profileUrl || !isPublisherPage(profileUrl)) return null;
+// Photo et présentation de l'auteur sur sa fiche des Éditions M-Éditer, s'il en a une.
+export async function profileInfo(profileUrl: string | null, name: string, fetchImpl: typeof fetch = fetch): Promise<{ photo: string | null; bio: string | null }> {
+  if (!profileUrl || !isPublisherPage(profileUrl)) return { photo: null, bio: null };
   try {
     const res = await fetchImpl(profileUrl);
-    return res.ok ? photoFromProfilePage(await res.text(), profileUrl, name) : null;
+    if (!res.ok) return { photo: null, bio: null };
+    const html = await res.text();
+    return { photo: photoFromProfilePage(html, profileUrl, name), bio: bioFromProfilePage(html) };
   } catch {
-    return null;
+    return { photo: null, bio: null };
   }
 }
 
-const BIO_TODO = "Présentation à compléter : la description YouTube ne présente pas l'auteur.";
+export async function profilePhoto(profileUrl: string | null, name: string, fetchImpl: typeof fetch = fetch): Promise<string | null> {
+  return (await profileInfo(profileUrl, name, fetchImpl)).photo;
+}
+
+export const BIO_TODO = "Présentation à compléter : la description YouTube ne présente pas l'auteur.";
 
 // Rattache l'auteur nommé dans la description aux vidéos qui n'en ont pas encore.
 // Sa présentation est reprise telle quelle de la description du Short ou de la vidéo longue ;
@@ -321,16 +330,19 @@ export async function attachAuthor(
 
   const withBio = vids.map((v) => ({ v, bio: authorBio(v.description, fullName) })).find((x) => x.bio);
   const link = vids.map((v) => authorLink(v.description)).find(Boolean) ?? null;
-  const qualification = withBio?.bio ?? BIO_TODO;
-  const qualificationSource = withBio ? `Description YouTube : https://www.youtube.com/watch?v=${withBio.v.youtubeId}` : link;
+  let qualification = withBio?.bio ?? BIO_TODO;
+  let qualificationSource = withBio ? `Description YouTube : https://www.youtube.com/watch?v=${withBio.v.youtubeId}` : link;
 
   let speaker = await db.query.speakers.findFirst({ where: sql`lower(${speakers.fullName}) = lower(${fullName})` });
   if (!speaker) {
     // Portrait : la vraie photo de la fiche auteur M-Éditer ; l'équipe peut la remplacer.
     // À défaut : l'image du Short, recadrée sur le visage
     // (les vignettes des vidéos longues portent souvent un titre en surimpression).
+    // Sans présentation dans la description YouTube, on reprend celle de la fiche auteur M-Éditer.
     const profileUrl = await findProfile(db, fullName, vids);
-    const fromProfile = await profilePhoto(profileUrl, fullName);
+    const profile = await profileInfo(profileUrl, fullName);
+    const fromProfile = profile.photo;
+    if (!withBio && profile.bio) [qualification, qualificationSource] = [profile.bio, profileUrl];
     const photoUrl = fromProfile ?? `https://i.ytimg.com/vi/${vids[0].youtubeId}/maxresdefault.jpg`;
     [speaker] = await db
       .insert(speakers)
@@ -398,7 +410,7 @@ async function doPlan(db: Db, day: string): Promise<PlanResult> {
 
   // Candidats : fiches originales validées, avec un Short, déjà publiées au moins une fois.
   const pool = await db
-    .select({ sheet: sheets, speakerId: videos.speakerId })
+    .select({ sheet: sheets, speakerId: videos.speakerId, publishedAt: videos.publishedAt })
     .from(sheets)
     .innerJoin(videos, eq(videos.id, sheets.shortVideoId))
     .where(and(eq(sheets.status, "validee"), isNull(sheets.replayOf), isNotNull(sheets.day), lt(sheets.day, day)))
@@ -406,16 +418,26 @@ async function doPlan(db: Db, day: string): Promise<PlanResult> {
   const fresh = pool.filter((c) => !recentRoots.has(c.sheet.id));
   if (fresh.length === 0) return { day, action: "aucune", movedToQueue };
 
+  // Tirage : une fois sur trois parmi les fiches récentes, deux fois sur trois parmi les anciennes
+  // (si l'un des deux groupes est vide, on prend dans l'autre).
+  const rand = seeded(day);
+  const recentFrom = addDays(day, -RECENT_DAYS);
+  const isRecent = (c: (typeof fresh)[number]) => !!c.publishedAt && parisDay(c.publishedAt) >= recentFrom;
+  const wantRecent = rand() < RECENT_SHARE;
+  const group = fresh.filter((c) => isRecent(c) === wantRecent);
+  const candidates = group.length ? group : fresh;
+
   const score = (c: (typeof fresh)[number]) =>
     (weekThemes.has(c.sheet.theme) ? 0 : 2) + (c.speakerId && weekSpeakers.has(c.speakerId) ? 0 : 1);
-  const best = Math.max(...fresh.map(score));
-  const top = fresh.filter((c) => score(c) === best);
-  const pick = top[Math.floor(seeded(day)() * top.length)].sheet;
+  const best = Math.max(...candidates.map(score));
+  const top = candidates.filter((c) => score(c) === best);
+  const pick = top[Math.floor(rand() * top.length)].sheet;
 
   const [replay] = await db
     .insert(sheets)
     .values({
       day,
+      title: pick.title,
       theme: pick.theme,
       question: pick.question,
       synthesis: pick.synthesis,

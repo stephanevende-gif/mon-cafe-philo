@@ -4,7 +4,7 @@ import "dotenv/config";
 import { eq } from "drizzle-orm";
 import { createDb } from "../src/db";
 import { sheets, speakers, videos } from "../src/db/schema";
-import { attachAuthor, findProfile, profilePhoto } from "../src/lib/automation";
+import { attachAuthor, BIO_TODO, findProfile, profileInfo, profilePhoto } from "../src/lib/automation";
 import { portraitFromUrl } from "../src/lib/portrait";
 
 async function main() {
@@ -32,6 +32,13 @@ async function main() {
     const portrait = photoUrl ? await portraitFromUrl(photoUrl, fetch, { short: !fromProfile && fromVideo }) : null;
     await db.update(speakers).set({ profileUrl, photoUrl, portrait: portrait ?? sp.portrait }).where(eq(speakers.id, sp.id));
     report.push(`${sp.fullName} : lien ${profileUrl ?? "à trouver"} ; photo ${photoUrl?.includes("izibookstore.com") ? "de la fiche auteur M-Éditer" : "d'une vidéo"} ; portrait ${portrait ? "enregistré" : "absent (image inaccessible)"}`);
+  }
+  // Présentations encore à compléter : reprises de la fiche auteur M-Éditer quand elle en a une.
+  for (const sp of await db.select().from(speakers)) {
+    if (sp.verifiedAt || sp.qualification !== BIO_TODO) continue;
+    const { bio } = await profileInfo(sp.profileUrl, sp.fullName);
+    if (bio) await db.update(speakers).set({ qualification: bio, qualificationSource: sp.profileUrl }).where(eq(speakers.id, sp.id));
+    report.push(`${sp.fullName} : présentation ${bio ? "reprise de la fiche auteur M-Éditer" : "toujours à compléter"}`);
   }
   console.log(report.join("\n"));
   await pool.end();

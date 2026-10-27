@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { Notion } from "@/lib/notions";
 import { eq } from "drizzle-orm";
 import { draftWithAi, planDay, syncPlaylist } from "@/lib/automation";
+import { addDays } from "@/lib/dates";
 import { parseIsoDuration, linkedVideoIds } from "@/lib/youtube-api";
 import { sheets, speakers, syncRuns, videos } from "@/db/schema";
 import { testDb } from "./helpers";
@@ -131,6 +132,27 @@ describe("programmation quotidienne", () => {
     expect((await planDay(ctx.db, "2026-10-27")).action).toBe("deja_prete");
     // Le lendemain, plus aucune fiche ancienne disponible : la fiche de secours prendra le relais.
     expect((await planDay(ctx.db, "2026-10-28")).action).toBe("aucune");
+  });
+
+  it("rediffuse environ deux tiers de fiches anciennes et un tiers de fiches récentes", async () => {
+    const [sp] = await ctx.db.insert(speakers).values({ fullName: "Intervenant", qualification: "q" }).returning();
+    for (const [yt, published, day] of [["vieuxAAAA01", "2023-03-01", "2026-01-10"], ["vieuxBBBB02", "2024-02-01", "2026-01-11"], ["neufCCCCC03", "2026-05-01", "2026-05-02"], ["neufDDDDD04", "2026-06-01", "2026-06-02"]]) {
+      const [v] = await ctx.db.insert(videos).values({ youtubeId: yt, kind: "short", title: yt, speakerId: sp.id, publishedAt: new Date(published) }).returning();
+      await ctx.db.insert(sheets).values({ day, theme: "la liberté", question: yt, synthesis: "s", shortVideoId: v.id, status: "validee" });
+    }
+    // 90 jours tirés un par un, chaque rediffusion effacée pour que toutes les fiches restent candidates.
+    let picks = 0;
+    for (let i = 0; i < 90; i++) {
+      const day = addDays("2026-11-01", i);
+      const r = await planDay(ctx.db, day);
+      const replay = await ctx.db.query.sheets.findFirst({ where: eq(sheets.id, r.sheetId!) });
+      const short = await ctx.db.query.videos.findFirst({ where: eq(videos.id, replay!.shortVideoId!) });
+      // Récente : Short publié moins d'un an avant le jour de diffusion.
+      if (short?.publishedAt && short.publishedAt >= new Date(addDays(day, -365))) picks++;
+      await ctx.db.delete(sheets).where(eq(sheets.id, replay!.id));
+    }
+    expect(picks).toBeGreaterThan(18);
+    expect(picks).toBeLessThan(42);
   });
 });
 
