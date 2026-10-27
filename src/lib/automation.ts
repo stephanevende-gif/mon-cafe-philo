@@ -284,13 +284,28 @@ export async function draftWithAi(
 }
 
 // Fiche auteur des Éditions M-Éditer (cherchée dans tout le catalogue), sinon lien « En savoir plus » de la description.
-export async function findProfile(db: Db, name: string, vids: { description: string | null }[]): Promise<string | null> {
+export async function findProfile(db: Db, name: string, vids: { description: string | null }[], fetchImpl: typeof fetch = fetch): Promise<string | null> {
   const cited = await db
     .select({ description: videos.description })
     .from(videos)
     .where(sql`${videos.description} ilike '%izibookstore.com/auteur/%'`);
   const all = [...vids.map((v) => v.description), ...cited.map((c) => c.description)];
-  return publisherPage(all, name) ?? vids.map((v) => authorLink(v.description)).find(Boolean)?.replace(/^http:\/\//i, "https://") ?? null;
+  return (
+    publisherPage(all, name) ??
+    publisherPage([await publisherIndex(fetchImpl)], name) ??
+    vids.map((v) => authorLink(v.description)).find(Boolean)?.replace(/^http:\/\//i, "https://") ??
+    null
+  );
+}
+
+// Liste des auteurs de la boutique M-Éditer (liens rendus absolus), pour trouver une fiche qu'aucune description ne cite.
+async function publisherIndex(fetchImpl: typeof fetch): Promise<string> {
+  try {
+    const res = await fetchImpl("https://m-editer.izibookstore.com/auteurs");
+    return res.ok ? (await res.text()).replace(/href="\/auteur\//g, 'href="https://m-editer.izibookstore.com/auteur/') : "";
+  } catch {
+    return "";
+  }
 }
 
 // Photo et présentation de l'auteur sur sa fiche des Éditions M-Éditer, s'il en a une.

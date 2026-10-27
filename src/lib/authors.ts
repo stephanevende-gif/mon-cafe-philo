@@ -104,7 +104,12 @@ export function bioFromProfilePage(html: string): string | null {
   const rest = html.slice(start).replace(/^[^>]*>/, "");
   const block = rest.slice(0, rest.search(/data-type=["']/i) >= 0 ? rest.search(/data-type=["']/i) : rest.length);
   const text = block
+    .replace(/<!--.*?-->/gs, " ")
+    .replace(/<style[^>]*>.*?<\/style>/gis, " ")
     .replace(/<[^>]+>/g, " ")
+    // Styles hérités d'un copier-coller depuis Word (« p.MsoNormal { … } ») et liste des ouvrages : écartés.
+    .replace(/[^{}]*\{[^{}]*\}/g, " ")
+    .replace(/\bBibliographie\s*:.*$/is, "")
     .replace(/&nbsp;/g, " ")
     .replace(/&amp;/g, "&")
     .replace(/&#(\d+);/g, (_, n) => String.fromCodePoint(Number(n)))
