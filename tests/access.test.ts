@@ -5,9 +5,9 @@ const DAY = 86400000;
 const t0 = new Date("2026-11-01T10:00:00Z");
 
 describe("droits d'accès", () => {
-  it("donne 30 jours d'essai puis coupe l'accès", () => {
+  it("donne 10 jours d'essai puis coupe l'accès", () => {
     const trial = { kind: "essai" as const, ...trialPeriod(t0) };
-    expect(computeAccess([trial], new Date(t0.getTime() + 29 * DAY)).active).toBe(true);
+    expect(computeAccess([trial], new Date(t0.getTime() + (TRIAL_DAYS - 1) * DAY)).active).toBe(true);
     expect(computeAccess([trial], new Date(t0.getTime() + TRIAL_DAYS * DAY)).active).toBe(false);
   });
 

@@ -86,7 +86,7 @@ export async function JePense({ ctx, message }: { ctx: JourneyContext; message?:
                 </div>
               ) : (
                 <div className="stack">
-                  <p>Prenez le temps d&apos;y réfléchir. Pour garder vos réflexions dans un carnet et découvrir la piste du jour, créez un compte : les 30 premiers jours sont gratuits, sans carte bancaire.</p>
+                  <p>Prenez le temps d&apos;y réfléchir. Pour garder vos réflexions dans un carnet et découvrir la piste du jour, créez un compte : les 10 premiers jours sont gratuits, sans carte bancaire.</p>
                   <div className="row">
                     <Link className="btn primary" href="/inscription">Commencer gratuitement</Link>
                     <Link className="btn" href={`/connexion?suite=${encodeURIComponent(here)}`}>J&apos;ai déjà un compte</Link>

@@ -76,7 +76,7 @@ export const rateEvents = pgTable(
   (t) => [index("rate_events_bucket_idx").on(t.bucket, t.createdAt)],
 );
 
-// Chaque période d'accès : 30 jours d'essai, 335 jours payés, ou attribution manuelle.
+// Chaque période d'accès : 10 jours d'essai, 355 jours payés, ou attribution manuelle.
 export const accessPeriods = pgTable(
   "access_periods",
   {

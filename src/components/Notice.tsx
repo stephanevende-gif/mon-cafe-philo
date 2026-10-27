@@ -13,7 +13,7 @@ const MESSAGES: Record<string, { text: string; kind: "ok" | "error" }> = {
   verifie: { text: "Votre adresse e-mail est confirmée. Merci.", kind: "ok" },
   envoye: { text: "Si un compte existe pour cette adresse, un e-mail vient d'être envoyé.", kind: "ok" },
   reinitialise: { text: "Votre mot de passe est modifié. Vous pouvez vous connecter.", kind: "ok" },
-  bienvenue: { text: "Bienvenue. Vos 30 jours gratuits commencent aujourd'hui. Un e-mail de confirmation vous a été envoyé.", kind: "ok" },
+  bienvenue: { text: "Bienvenue. Vos 10 jours gratuits commencent aujourd'hui. Un e-mail de confirmation vous a été envoyé.", kind: "ok" },
   confirmation: { text: "Pour supprimer votre compte, tapez SUPPRIMER et indiquez votre mot de passe.", kind: "error" },
   sauve: { text: "Modifications enregistrées.", kind: "ok" },
   suspendu: { text: "Ce compte est suspendu. Écrivez aux Éditions M-Éditer pour contester cette décision.", kind: "error" },

@@ -3,7 +3,7 @@ import { db } from "@/db";
 import { accessPeriods, users } from "@/db/schema";
 import { Notice } from "@/components/Notice";
 import { adminGrant, adminRole, adminSuspend } from "@/app/actions/admin";
-import { computeAccess } from "@/lib/access";
+import { PAID_DAYS, computeAccess } from "@/lib/access";
 import { requireAdmin } from "@/lib/auth";
 import { formatDate } from "@/lib/dates";
 
@@ -60,7 +60,7 @@ export default async function Page({ searchParams }: Props) {
                     <div className="stack" style={{ gap: 8 }}>
                       <form action={adminGrant} className="row">
                         <input type="hidden" name="id" value={u.id} />
-                        <input type="number" name="jours" defaultValue={335} min={1} max={1000} aria-label="Jours offerts" style={{ width: 90 }} />
+                        <input type="number" name="jours" defaultValue={PAID_DAYS} min={1} max={1000} aria-label="Jours offerts" style={{ width: 90 }} />
                         <input type="text" name="note" placeholder="motif" aria-label="Motif" style={{ width: 140 }} />
                         <button className="btn small" type="submit">Offrir</button>
                       </form>
