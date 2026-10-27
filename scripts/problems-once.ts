@@ -2,7 +2,7 @@ import "dotenv/config";
 import { and, desc, eq, isNotNull, isNull, notLike, or } from "drizzle-orm";
 import { createDb } from "../src/db";
 import { sheets } from "../src/db/schema";
-import { aiEnabled, proposeProblem, proposeReadingParts, proposeReadings } from "../src/lib/ai";
+import { aiEnabled, chooseBookCover, proposeProblem, proposeReadingParts, proposeReadings } from "../src/lib/ai";
 import { cleanReadings } from "../src/lib/readings";
 import { withCovers } from "../src/lib/covers";
 
@@ -15,21 +15,23 @@ async function main() {
   const limit = Number(process.argv[2] ?? 10);
   const { db, pool } = createDb(process.env.DATABASE_URL!);
   const todo = await db
-    .select({ id: sheets.id, question: sheets.question, synthesis: sheets.synthesis, solutionQuestion: sheets.solutionQuestion, readings: sheets.readings })
+    .select({ id: sheets.id, question: sheets.question, synthesis: sheets.synthesis, problem: sheets.problem, solutionQuestion: sheets.solutionQuestion, readings: sheets.readings })
     .from(sheets)
     .where(and(or(isNull(sheets.solutionQuestion), isNull(sheets.readings)), notLike(sheets.question, "[Question à rédiger]%")))
     .orderBy(desc(sheets.updatedAt))
     .limit(limit);
+  const pickCover = (covers: Buffer[], r: { philosopher: string; book: string }) => chooseBookCover(covers, r);
   const done = [];
   for (const s of todo) {
     const set: Partial<typeof sheets.$inferInsert> = {};
     if (!s.solutionQuestion) {
       const p = await proposeProblem(s);
-      if (p) Object.assign(set, { problem: p.problem.slice(0, 700), solutionQuestion: p.solutionQuestion.slice(0, 400) });
+      // Un problème déjà rédigé est gardé : seule la question de solution est ajoutée.
+      if (p) Object.assign(set, { ...(s.problem ? {} : { problem: p.problem.slice(0, 700) }), solutionQuestion: p.solutionQuestion.slice(0, 700) });
     }
     if (!s.readings) {
       const r = await proposeReadings(s);
-      if (r?.length) set.readings = await withCovers(cleanReadings(r));
+      if (r?.length) set.readings = await withCovers(cleanReadings(r), fetch, pickCover);
     }
     if (!Object.keys(set).length) continue;
     await db.update(sheets).set({ ...set, updatedAt: new Date() }).where(eq(sheets.id, s.id));
@@ -39,7 +41,7 @@ async function main() {
   const covers = [];
   for (const s of await db.select({ id: sheets.id, readings: sheets.readings }).from(sheets).where(isNotNull(sheets.readings))) {
     if (!s.readings?.some((r) => !r.cover)) continue;
-    const readings = await withCovers(s.readings);
+    const readings = await withCovers(s.readings, fetch, pickCover);
     await db.update(sheets).set({ readings }).where(eq(sheets.id, s.id));
     covers.push(...readings.map((r) => `${r.philosopher}, ${r.book} : ${r.cover ? "couverture trouvée" : "pas de couverture"}`));
   }

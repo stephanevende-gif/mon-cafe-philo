@@ -152,7 +152,7 @@ export const sheets = pgTable(
     question: text("question").notNull(),
     synthesis: text("synthesis"),
     // Page « Je suis » : le problème que pose l'alternative de la question, puis la question de solution
-    // soumise au lecteur pour sa version 3 (« Quelle solution adopter pour… ? »).
+    // soumise au lecteur pour sa version 3 (« Quelle attitude adopter (individuelle et collective) pour qu'à la fois… ? »).
     problem: text("problem"),
     solutionQuestion: text("solution_question"),
     // Fin de la page « Je suis » : trois philosophes à lire, chacun avec un livre et deux phrases de présentation.

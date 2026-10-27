@@ -27,4 +27,14 @@ describe("couvertures des livres conseillés", () => {
     expect(await findCover(reading, fakeFetch([{ author_name: ["Autre Personne"], cover_i: 7 }], null).f)).toBeNull();
     expect(await findCover(reading, fakeFetch([{ author_name: ["Henri Bergson"], cover_i: 7 }], null).f)).toBeNull();
   });
+
+  it("laisse l'IA écarter toutes les éditions qui ne conviennent pas", async () => {
+    const png = await sharp({ create: { width: 300, height: 450, channels: 3, background: "#943e37" } }).png().toBuffer();
+    const docs = [{ author_name: ["Henri Bergson"], cover_i: 1 }, { author_name: ["Henri Bergson"], cover_i: 2 }];
+    expect(await findCover(reading, fakeFetch(docs, png).f, async () => null)).toBeNull();
+    let seen = 0;
+    const cover = await findCover(reading, fakeFetch(docs, png).f, async (covers) => ((seen = covers.length), 1));
+    expect(seen).toBe(2);
+    expect(cover).toMatch(/^data:image\/jpeg;base64,/);
+  });
 });

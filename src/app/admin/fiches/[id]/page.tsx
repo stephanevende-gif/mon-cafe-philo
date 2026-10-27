@@ -71,7 +71,7 @@ export default async function Page({ params, searchParams }: Props) {
         </label>
         <label>
           Question de solution posée au lecteur
-          <textarea name="solution" id="solution" maxLength={400} defaultValue={sheet?.solutionQuestion ?? ""} style={{ minHeight: 70 }} placeholder="Quelle solution adopter pour à la fois…" />
+          <textarea name="solution" id="solution" maxLength={700} defaultValue={sheet?.solutionQuestion ?? ""} style={{ minHeight: 70 }} placeholder="Quelle attitude adopter (individuelle et collective) pour qu'à la fois nous puissions, d'une part…" />
           <span className="hint">Affichée avant la version 3 du carnet. Elle ne donne jamais la réponse : la solution revient au lecteur.</span>
         </label>
         <fieldset className="field-group">

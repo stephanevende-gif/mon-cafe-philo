@@ -215,7 +215,7 @@ function proposalFields(p: SheetProposal | null, title: string) {
     question: p?.question?.slice(0, 300) || `[Question à rédiger] ${cleanTitle(title)}`.slice(0, 300),
     synthesis: p?.synthesis?.slice(0, 700) ?? null,
     problem: p?.problem?.slice(0, 700) || null,
-    solutionQuestion: p?.solutionQuestion?.slice(0, 400) || null,
+    solutionQuestion: p?.solutionQuestion?.slice(0, 700) || null,
     readings: p?.readings?.length ? cleanReadings(p.readings) : null,
   };
 }

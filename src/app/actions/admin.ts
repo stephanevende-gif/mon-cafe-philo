@@ -90,7 +90,7 @@ export async function saveSheet(fd: FormData) {
   // Les couvertures déjà trouvées sont gardées ; un livre nouveau reçoit la sienne s'il en existe une.
   const before = id ? await db.query.sheets.findFirst({ where: eq(sheets.id, id) }) : null;
   const typed = readingsFrom(fd);
-  const readings = typed ? await withCovers(keepCovers(typed, before?.readings)) : null;
+  const readings = typed ? await withCovers(keepCovers(typed, before?.readings), fetch, await coverChooser()) : null;
 
   const values = {
     day,
@@ -99,7 +99,7 @@ export async function saveSheet(fd: FormData) {
     question,
     synthesis,
     problem: str(fd, "probleme", 700),
-    solutionQuestion: str(fd, "solution", 400),
+    solutionQuestion: str(fd, "solution", 700),
     readings,
     shortVideoId,
     lectureVideoId,
@@ -127,6 +127,11 @@ export async function saveSheet(fd: FormData) {
     if (code === "23505") fail(back, "Une autre fiche est déjà programmée ce jour-là.");
     throw e;
   }
+}
+
+async function coverChooser() {
+  const { aiEnabled, chooseBookCover } = await import("@/lib/ai");
+  return aiEnabled() ? (covers: Buffer[], r: { philosopher: string; book: string }) => chooseBookCover(covers, r) : null;
 }
 
 async function frameChooser() {
