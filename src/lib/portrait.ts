@@ -9,7 +9,7 @@ const SIZE = 480;
 
 export async function drawPortrait(image: Buffer): Promise<string> {
   const base = sharp(image).resize(SIZE, SIZE, { fit: "cover", position: sharp.strategy.attention }).grayscale().normalise();
-  const gray = await base.clone().raw().toBuffer();
+  const gray = await base.clone().sharpen({ sigma: 1.2 }).raw().toBuffer();
   // Négatif flouté : sert au « fondu-densité » qui donne l'aspect graphite.
   const blurredNegative = await base.clone().negate({ alpha: false }).blur(9).raw().toBuffer();
   // Ombres adoucies pour placer les hachures.
@@ -41,14 +41,17 @@ export async function drawPortrait(image: Buffer): Promise<string> {
       const i = y * w + x;
       // 1. Crayon : fondu-densité du gris par son négatif flouté.
       let v = Math.min(255, (gray[i] * 255) / (256 - blurredNegative[i]));
+      // Modelé : on garde les valeurs de l'image (ombres, volumes), éclaircies comme un graphite sur papier.
+      const tone = Math.pow(gray[i] / 255, 0.85);
+      v *= 0.38 + 0.62 * tone;
       // 2. Encre : traits noirs là où le contraste est fort.
       const gx = at(soft, x + 1, y) - at(soft, x - 1, y);
       const gy = at(soft, x, y + 1) - at(soft, x, y - 1);
-      const edge = Math.min(1, Math.max(0, (Math.hypot(gx, gy) - 18) / 40));
-      v *= 1 - 0.75 * edge;
+      const edge = Math.min(1, Math.max(0, (Math.hypot(gx, gy) - 14) / 34));
+      v *= 1 - 0.85 * edge;
       // 3. Hachures au crayon dans les ombres, plus marquées quand c'est sombre.
       const shade = Math.max(0, (150 - soft[i]) / 150);
-      v *= 1 - shade * 0.55 * (strokes[i] / 255);
+      v *= 1 - shade * 0.35 * (strokes[i] / 255);
       // 4. Bords non finis : le dessin se perd dans le papier, de façon irrégulière.
       const r = Math.hypot(x - c, (y - c) * 0.85) / c + (patches[i] / 255 - 0.5) * 0.3 + (strokes[i] / 255 - 0.5) * 0.08;
       const fade = Math.min(1, Math.max(0, (r - 0.5) / 0.32));
