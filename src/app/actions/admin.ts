@@ -9,6 +9,7 @@ import { grantAccess } from "@/lib/access";
 import { requireAdmin, requireEditor } from "@/lib/auth";
 import { isDay } from "@/lib/dates";
 import { parseDuration, parseYouTubeId } from "@/lib/youtube";
+import { formatNotions, isNotion } from "@/lib/notions";
 
 const UUID = /^[0-9a-f-]{36}$/;
 
@@ -47,9 +48,11 @@ export async function saveSheet(fd: FormData) {
   const day = str(fd, "jour", 10);
   if (day && !isDay(day)) fail(back, "La date est invalide.");
   const title = str(fd, "titre", 200);
-  const theme = str(fd, "theme", 80)?.toLowerCase();
+  const notions = fd.getAll("notion").map(String).filter(isNotion);
+  if (notions.length > 3) fail(back, "Choisissez trois notions au plus.");
+  const theme = formatNotions(notions);
   const question = str(fd, "question", 300);
-  if (!theme || !question) fail(back, "Le thème et la question sont obligatoires.");
+  if (!theme || !question) fail(back, "Le thème (au moins une notion) et la question sont obligatoires.");
   const status = (["brouillon", "a_verifier", "validee"] as const).find((s) => s === fd.get("statut")) ?? "brouillon";
   const shortVideoId = uuid(fd, "short");
   const lectureVideoId = uuid(fd, "conference");

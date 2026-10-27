@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import * as z from "zod/v4";
 import { cleanTitle } from "./youtube";
+import { NOTIONS } from "./notions";
 
 // L'IA est un assistant éditorial : elle propose, l'équipe M-Éditer valide.
 // Rien de ce qu'elle produit n'est publié sans validation humaine.
@@ -10,14 +11,20 @@ const Proposal = z.object({
   title: z
     .string()
     .describe("Titre de la fiche, qui n'est pas une question : « Aujourd'hui, on s'interroge sur le rôle de… », « … sur la place de… », etc."),
-  theme: z.string().describe("Un seul mot ou une courte expression : liberté, vérité, technique…"),
+  notions: z
+    .array(z.enum(NOTIONS))
+    .describe("Les trois notions du programme officiel de philosophie de terminale les plus utiles pour travailler la question."),
   question: z
     .string()
     .describe("Une question philosophique courte, toujours formulée comme une alternative entre deux positions : « … ou … ? »."),
   synthesis: z
     .string()
     .nullable()
-    .describe("Proposition de réponse de l'auteur : deux phrases fidèles à l'intervention, ou null si la description ne permet pas de savoir ce que dit l'intervenant."),
+    .describe("Approche de la question par l'auteur : deux phrases fidèles à l'intervention, ou null si la description ne permet pas de savoir ce que dit l'intervenant."),
+  author: z
+    .string()
+    .nullable()
+    .describe("Nom de l'intervenant tel qu'il figure dans le titre ou la description, ou null s'il n'y figure pas."),
   missing: z.string().nullable().describe("Ce qui manque pour une fiche fiable, ou null."),
 });
 
@@ -28,11 +35,11 @@ On te donne le titre et la description d'une courte vidéo (Short) où un philos
 
 Propose :
 - un titre de fiche, qui n'est PAS une question, sous la forme « Aujourd'hui, on s'interroge sur… » suivi de l'objet de la réflexion : par exemple « Aujourd'hui, on s'interroge sur le rôle de la technique dans nos décisions », « Aujourd'hui, on s'interroge sur la place de la violence dans l'éthique » ;
-- un thème (un mot ou une courte expression, en minuscules) ;
+- le thème : les trois notions du programme officiel de philosophie de terminale (voie générale) les plus utiles pour travailler la question, choisies uniquement dans cette liste : ${NOTIONS.join(", ")} ;
 - une question philosophique courte, claire et stimulante, qui ne soit ni factuelle ni orientée vers sa propre réponse. Elle est TOUJOURS formulée comme une alternative entre deux positions défendables, avec « ou » : par exemple « La technique nous libère-t-elle ou nous asservit-elle ? », « Parler, est-ce transmettre des mots ou partager une présence ? ». Les deux branches doivent être aussi sérieuses l'une que l'autre ;
-- la proposition de réponse de l'auteur : en deux phrases rigoureuses et accessibles, la réponse que l'intervenant apporte à cette question, telle que la description permet de l'établir (champ synthesis). Ce n'est pas une citation : c'est une reformulation fidèle ;
+- l'approche de la question par l'auteur : en deux phrases rigoureuses et accessibles, la manière dont l'intervenant aborde et répond à cette question, telle que la description permet de l'établir (champ synthesis). Ce n'est pas une citation : c'est une reformulation fidèle ;
 
-La proposition de réponse doit rester fidèle à ce que la description permet d'établir sur la pensée de l'intervenant. N'invente aucune citation, aucun titre, aucun diplôme, aucune référence. Si la description ne dit pas assez clairement ce que soutient l'intervenant, mets synthesis à null et explique ce qui manque dans missing.
+L'approche décrite doit rester fidèle à ce que la description permet d'établir sur la pensée de l'intervenant. N'invente aucun nom d'intervenant, aucune citation, aucun titre, aucun diplôme, aucune référence. Si la description ne dit pas assez clairement ce que soutient l'intervenant, mets synthesis à null et explique ce qui manque dans missing.
 Écris en français.`;
 
 // Certains hébergeurs réservent le nom ANTHROPIC_API_KEY (et fixent ANTHROPIC_BASE_URL) pour leur propre usage :

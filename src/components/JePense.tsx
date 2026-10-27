@@ -31,7 +31,7 @@ export async function JePense({ ctx, message }: { ctx: JourneyContext; message?:
             {sheet?.title && <p className="sheet-title">{sheet.title}</p>}
             {sheet && (
               <span className="theme">
-                Thème : <b>{sheet.theme}</b>
+                {sheet.theme.includes(",") ? "Thèmes" : "Thème"} : <b>{sheet.theme}</b>
               </span>
             )}
           </div>

@@ -36,17 +36,17 @@ export async function Donc({ ctx }: { ctx: JourneyContext }) {
         </div>
 
         <div className="synth">
-          <span className="eyebrow">Proposition de réponse de l&apos;auteur</span>
+          <span className="eyebrow">Approche de la question par {speaker ? speaker.fullName : "l'auteur"}</span>
           {d.sheet.synthesis ? (
             <>
               <p>{d.sheet.synthesis}</p>
               <small>
-                Réponse de l&apos;auteur reformulée par les Éditions M-Éditer{speaker ? ", fidèle à l'intervention ci-dessous" : ""}. Ce n&apos;est pas une
+                Approche de l&apos;auteur reformulée par les Éditions M-Éditer{speaker ? ", fidèle à l'intervention ci-dessous" : ""}. Ce n&apos;est pas une
                 citation de l&apos;intervenant.
               </small>
             </>
           ) : (
-            <p className="pending">La proposition de réponse de l&apos;auteur est en cours de rédaction.</p>
+            <p className="pending">L&apos;approche de la question par l&apos;auteur est en cours de rédaction.</p>
           )}
         </div>
 

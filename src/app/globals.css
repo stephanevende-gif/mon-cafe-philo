@@ -224,3 +224,5 @@ th { font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color:
 }
 
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+.notions { border: 1px solid var(--filet); border-radius: 8px; padding: 10px 14px; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 4px 12px; }
+.notions legend { padding: 0 6px; font-weight: 600; }

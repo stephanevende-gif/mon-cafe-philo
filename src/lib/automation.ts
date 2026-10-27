@@ -5,6 +5,7 @@ import { addDays, parisDay } from "./dates";
 import { getVideos, linkedVideoIds, listPlaylist, type Fetch } from "./youtube-api";
 import type { SheetProposal } from "./ai";
 import { cleanTitle } from "./youtube";
+import { formatNotions } from "./notions";
 
 export const DEFAULT_PLAYLIST = "PL2d4vA4vfs79RPBnT3PFdOjyXaWPdquGv";
 const SHORT_MAX = 180;
@@ -180,18 +181,22 @@ async function doSync(db: Db, opts: SyncOptions): Promise<SyncReport> {
   return report;
 }
 
-const AI_NOTE = "Titre, thème, question et proposition de réponse proposés par un outil d'IA à partir de la description du Short : à vérifier avant validation.";
+const AI_NOTE = "Titre, notions, question et approche de l'auteur proposés par un outil d'IA à partir de la description du Short : à vérifier avant validation.";
 const TODO_NOTE = "Thème, question et synthèse à rédiger.";
 
 function proposalNotes(p: SheetProposal | null): string[] {
   if (!p) return [TODO_NOTE];
-  return [AI_NOTE, ...(p.missing ? [`Informations manquantes signalées : ${p.missing}`] : [])];
+  return [
+    AI_NOTE,
+    ...(p.author ? [`Auteur d'après la description YouTube : ${p.author} (à vérifier).`] : []),
+    ...(p.missing ? [`Informations manquantes signalées : ${p.missing}`] : []),
+  ];
 }
 
 function proposalFields(p: SheetProposal | null, title: string) {
   return {
     title: p?.title?.slice(0, 200) || null,
-    theme: p?.theme?.toLowerCase().slice(0, 80) || "à définir",
+    theme: (p?.notions?.length ? formatNotions(p.notions) : "") || "à définir",
     question: p?.question?.slice(0, 300) || `[Question à rédiger] ${cleanTitle(title)}`.slice(0, 300),
     synthesis: p?.synthesis?.slice(0, 700) ?? null,
   };

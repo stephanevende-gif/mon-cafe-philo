@@ -1,4 +1,5 @@
-import { and, asc, desc, eq, gte, ilike, isNotNull, isNull, lte, or } from "drizzle-orm";
+import { and, asc, desc, eq, gte, ilike, isNotNull, isNull, lte, or, sql } from "drizzle-orm";
+import { NOTIONS, NOTION_SEPARATOR, notionsOf } from "./notions";
 import { alias } from "drizzle-orm/pg-core";
 import type { Db } from "@/db";
 import { books, sheets, speakers, videos, type Book, type Sheet, type Speaker, type Video } from "@/db/schema";
@@ -74,7 +75,8 @@ export interface ArchiveFilters {
 export async function searchArchives(db: Db, filters: ArchiveFilters, today: string) {
   const shortVideo = alias(videos, "short_video");
   const conds = [eq(sheets.status, "validee"), isNotNull(sheets.day), lte(sheets.day, today), isNull(sheets.replayOf)];
-  if (filters.theme) conds.push(eq(sheets.theme, filters.theme));
+  // Une fiche porte jusqu'à trois notions : le filtre retient celles qui contiennent la notion choisie.
+  if (filters.theme) conds.push(sql`${filters.theme} = any(string_to_array(${sheets.theme}, ${NOTION_SEPARATOR}))`);
   if (filters.from) conds.push(gte(sheets.day, filters.from));
   if (filters.to) conds.push(lte(sheets.day, filters.to));
   if (filters.speaker) conds.push(eq(speakers.id, filters.speaker));
@@ -118,6 +120,7 @@ export async function archiveFacets(db: Db, today: string) {
     .innerJoin(sheets, eq(sheets.shortVideoId, videos.id))
     .where(and(eq(sheets.status, "validee"), lte(sheets.day, today)))
     .orderBy(asc(speakers.fullName));
-  return { themes: themes.map((t) => t.theme), people };
+  const used = new Set(themes.flatMap((t) => notionsOf(t.theme)));
+  return { themes: NOTIONS.filter((n) => used.has(n)), people };
 }
 
