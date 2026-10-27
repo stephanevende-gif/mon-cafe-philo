@@ -127,7 +127,7 @@ export const sheets = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     // Jour de publication (heure de Paris). Vide pour une fiche non programmée.
     day: date("day", { mode: "string" }),
-    // Titre de la fiche : « Aujourd'hui, on s'interroge sur… ». Vide pour les anciennes fiches.
+    // Titre de la fiche : « Interrogeons-nous sur… ». Vide pour les anciennes fiches.
     title: text("title"),
     theme: text("theme").notNull(),
     question: text("question").notNull(),

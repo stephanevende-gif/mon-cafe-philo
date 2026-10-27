@@ -45,7 +45,7 @@ export default async function Page({ params, searchParams }: Props) {
       <form action={saveSheet} className="field-group">
         {sheet && <input type="hidden" name="id" value={sheet.id} />}
         <label>Jour de publication<input type="date" name="jour" id="jour" defaultValue={sheet?.day ?? sp.jour ?? ""} /><span className="hint">Laisser vide pour une fiche non programmée ou de secours. Le sujet change à minuit, heure de Paris.</span></label>
-        <label>Titre<input type="text" name="titre" id="titre" maxLength={200} defaultValue={sheet?.title ?? ""} placeholder="Aujourd'hui, on s'interroge sur…" /></label>
+        <label>Titre<input type="text" name="titre" id="titre" maxLength={200} defaultValue={sheet?.title ?? ""} placeholder="Interrogeons-nous sur…" /></label>
         <fieldset className="notions">
           <legend>Thème : trois notions du programme de terminale</legend>
           {NOTIONS.map((n) => (

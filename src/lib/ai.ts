@@ -10,7 +10,7 @@ import { NOTIONS } from "./notions";
 const Proposal = z.object({
   title: z
     .string()
-    .describe("Titre de la fiche, qui n'est pas une question : « Aujourd'hui, on s'interroge sur le rôle de… », « … sur la place de… », etc."),
+    .describe("Titre de la fiche, qui n'est pas une question : « Interrogeons-nous sur le rôle de… », « Interrogeons-nous sur la place de… », etc."),
   notions: z
     .array(z.enum(NOTIONS))
     .describe("Les trois notions du programme officiel de philosophie de terminale les plus utiles pour travailler la question."),
@@ -34,7 +34,7 @@ const SYSTEM = `Tu aides l'équipe éditoriale des Éditions M-Éditer, maison d
 On te donne le titre et la description d'une courte vidéo (Short) où un philosophe ou un universitaire réel s'exprime.
 
 Propose :
-- un titre de fiche, qui n'est PAS une question, sous la forme « Aujourd'hui, on s'interroge sur… » suivi de l'objet de la réflexion : par exemple « Aujourd'hui, on s'interroge sur le rôle de la technique dans nos décisions », « Aujourd'hui, on s'interroge sur la place de la violence dans l'éthique » ;
+- un titre de fiche, qui n'est PAS une question, sous la forme « Interrogeons-nous sur… » suivi de l'objet de la réflexion : par exemple « Interrogeons-nous sur le rôle de la technique dans nos décisions », « Interrogeons-nous sur la place de la violence dans l'éthique » ;
 - le thème : les trois notions du programme officiel de philosophie de terminale (voie générale) les plus utiles pour travailler la question, choisies uniquement dans cette liste : ${NOTIONS.join(", ")} ;
 - une question philosophique courte, claire et stimulante, qui ne soit ni factuelle ni orientée vers sa propre réponse. Elle est TOUJOURS formulée comme une alternative entre deux positions défendables, avec « ou » : par exemple « La technique nous libère-t-elle ou nous asservit-elle ? », « Parler, est-ce transmettre des mots ou partager une présence ? ». Les deux branches doivent être aussi sérieuses l'une que l'autre ;
 - l'approche de la question par l'auteur : en deux phrases rigoureuses et accessibles, la manière dont l'intervenant aborde et répond à cette question, telle que la description permet de l'établir (champ synthesis). Ce n'est pas une citation : c'est une reformulation fidèle ;
