@@ -11,6 +11,7 @@ import { formatNotions } from "./notions";
 import { authorBio, authorLink, isPublisherPage, photoFromProfilePage, bioFromProfilePage, publisherPage } from "./authors";
 import { portraitFromUrl } from "./portrait";
 import { fillPosters, type ChooseFrame } from "./posters";
+import { authorBibliography, type ChooseBooks } from "./publisher-books";
 
 export const DEFAULT_PLAYLIST = "PL2d4vA4vfs79RPBnT3PFdOjyXaWPdquGv";
 const SHORT_MAX = 180;
@@ -480,7 +481,10 @@ async function doPlan(db: Db, day: string): Promise<PlanResult> {
 }
 
 // Tâche programmée complète : synchronisation (si la clé est configurée) puis programmation d'aujourd'hui et de demain.
-export async function runScheduledTasks(db: Db, opts: Omit<SyncOptions, "apiKey"> & { apiKey?: string; chooseFrame?: ChooseFrame }) {
+export async function runScheduledTasks(
+  db: Db,
+  opts: Omit<SyncOptions, "apiKey"> & { apiKey?: string; chooseFrame?: ChooseFrame; chooseBooks?: ChooseBooks },
+) {
   const now = opts.now ?? new Date();
   const out: { sync?: SyncReport; syncError?: string; plans: PlanResult[]; postersError?: string } = { plans: [] };
   if (opts.apiKey) {
@@ -496,11 +500,38 @@ export async function runScheduledTasks(db: Db, opts: Omit<SyncOptions, "apiKey"
   out.plans.push(await planDay(db, addDays(today, 1)));
   try {
     await postersForDays(db, [today, addDays(today, 1)], { choose: opts.chooseFrame, fetchImpl: opts.fetchImpl });
+    await fillBibliographies(db, { days: [today, addDays(today, 1)], choose: opts.chooseBooks, fetchImpl: opts.fetchImpl });
   } catch (e) {
     // Sans image d'attente, le lecteur garde son fond uni : la fiche reste servie.
     out.postersError = (e as Error).message;
   }
   return out;
+}
+
+// Bibliographie de l'auteur aux Éditions M-Éditer, pour les fiches qui n'en ont pas encore : celles de ces jours
+// et les fiches de secours, ou les fiches désignées. Il faut que l'auteur du Short ait sa fiche sur le site des Éditions.
+export async function fillBibliographies(
+  db: Db,
+  opts: { days?: string[]; sheetIds?: string[]; choose?: ChooseBooks | null; fetchImpl?: Fetch },
+): Promise<{ question: string; books: string[] }[]> {
+  const scope = opts.sheetIds
+    ? inArray(sheets.id, opts.sheetIds)
+    : sql`${inArray(sheets.day, opts.days ?? [])} or (${sheets.isBackup} and ${sheets.status} = 'validee')`;
+  const rows = await db
+    .select({ id: sheets.id, question: sheets.question, profileUrl: speakers.profileUrl })
+    .from(sheets)
+    .innerJoin(videos, eq(videos.id, sheets.shortVideoId))
+    .innerJoin(speakers, eq(speakers.id, videos.speakerId))
+    .where(and(isNull(sheets.authorBooks), isNotNull(speakers.profileUrl), scope));
+  const done = [];
+  for (const r of rows) {
+    if (!r.profileUrl || !isPublisherPage(r.profileUrl)) continue;
+    const books = await authorBibliography(r.profileUrl, r.question, { choose: opts.choose, fetchImpl: opts.fetchImpl as typeof fetch | undefined });
+    if (!books.length) continue;
+    await db.update(sheets).set({ authorBooks: books }).where(and(eq(sheets.id, r.id), isNull(sheets.authorBooks)));
+    done.push({ question: r.question, books: books.map((b) => b.title) });
+  }
+  return done;
 }
 
 // Images d'attente des vidéos des fiches de ces jours et des fiches de secours.

@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Notice } from "@/components/Notice";
 import { signup } from "../actions/auth";
 import { PAID_DAYS, PRICE_CENTS, TRIAL_DAYS } from "@/lib/access";
+import { testerCodeRequired } from "@/lib/tester-code";
 
 export const metadata = { title: "Créer un compte" };
 
@@ -19,6 +20,13 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ m
         </div>
         <Notice code={message} />
         <form action={signup} className="field-group">
+          {testerCodeRequired() && (
+            <label>
+              Code d&apos;accès testeur
+              <input type="text" name="code" id="code" required autoComplete="off" autoCapitalize="none" />
+              <span className="hint">L&apos;application est en test : le code vous a été donné par les Éditions M-Éditer.</span>
+            </label>
+          )}
           <label>Prénom ou pseudonyme<input type="text" name="nom" id="nom" required maxLength={60} autoComplete="nickname" /></label>
           <label>Adresse e-mail<input type="email" name="email" id="email" required autoComplete="email" /></label>
           <label>

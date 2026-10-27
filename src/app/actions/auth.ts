@@ -17,6 +17,7 @@ import { closeSession, openSession, requireUser } from "@/lib/auth";
 import { appUrl, sendMail } from "@/lib/mail";
 import { passwordProblem, verifyPassword } from "@/lib/password";
 import { hitLimit } from "@/lib/rate-limit";
+import { testerCodeOk } from "@/lib/tester-code";
 
 const MIN = 60 * 1000;
 
@@ -48,6 +49,8 @@ export async function signup(formData: FormData) {
   // Champ piège invisible : un humain ne le remplit pas.
   if (formData.get("site")) redirect("/inscription?message=champs");
   if (formData.get("conditions") !== "on") redirect("/inscription?message=consentement");
+  // Version de test : l'inscription demande le code d'accès donné aux testeurs, s'il est défini.
+  if (!testerCodeOk(formData.get("code"))) redirect("/inscription?message=code_acces");
   const parsed = signupSchema.safeParse({
     displayName: formData.get("nom"),
     email: formData.get("email"),

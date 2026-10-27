@@ -1,9 +1,11 @@
 import { timingSafeEqual } from "node:crypto";
 import { db } from "@/db";
-import { aiEnabled, chooseFlatteringFrame, proposeSheet } from "@/lib/ai";
+import { aiEnabled, chooseAuthorBooks, chooseFlatteringFrame, proposeSheet } from "@/lib/ai";
 import { runScheduledTasks } from "@/lib/automation";
 
 export const dynamic = "force-dynamic";
+// La synchronisation et les propositions de l'IA peuvent prendre plusieurs minutes.
+export const maxDuration = 300;
 
 function authorized(req: Request): boolean {
   const secret = process.env.CRON_SECRET;
@@ -13,7 +15,12 @@ function authorized(req: Request): boolean {
   return given.length === expected.length && timingSafeEqual(given, expected);
 }
 
-// Appelée chaque heure par le planificateur de l'hébergeur : synchronise la playlist et prépare aujourd'hui et demain.
+// Appelée par le planificateur de l'hébergeur : synchronise la playlist et prépare aujourd'hui et demain.
+// Le planificateur de Vercel appelle en GET, avec le même en-tête Authorization.
+export async function GET(req: Request) {
+  return POST(req);
+}
+
 export async function POST(req: Request) {
   if (!authorized(req)) return Response.json({ error: "non autorisé" }, { status: 401 });
   const result = await runScheduledTasks(db, {
@@ -21,6 +28,7 @@ export async function POST(req: Request) {
     playlistId: process.env.YOUTUBE_PLAYLIST_ID || undefined,
     propose: aiEnabled() ? proposeSheet : undefined,
     chooseFrame: aiEnabled() ? (frames) => chooseFlatteringFrame(frames) : undefined,
+    chooseBooks: aiEnabled() ? (question, titles) => chooseAuthorBooks(question, titles) : undefined,
   });
   return Response.json(result);
 }

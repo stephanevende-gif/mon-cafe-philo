@@ -1,0 +1,66 @@
+import "dotenv/config";
+import { existsSync, readFileSync } from "node:fs";
+import { gunzipSync } from "node:zlib";
+import { count, eq } from "drizzle-orm";
+import { createDb } from "../src/db";
+import { sheets, users } from "../src/db/schema";
+import { registerUser } from "../src/lib/accounts";
+import { passwordProblem } from "../src/lib/password";
+
+// Version de test en ligne, lancé à chaque déploiement après les migrations :
+// 1. une base vide reçoit l'instantané des fiches, auteurs, livres et vidéos préparés (aucun compte lecteur) ;
+// 2. le compte administrateur ADMIN_EMAIL / ADMIN_PASSWORD est créé s'il n'existe pas.
+// Une base qui contient déjà des fiches n'est jamais modifiée par l'instantané.
+const SNAPSHOT = "data/instantane-test.sql.gz";
+
+async function main() {
+  if (!process.env.DATABASE_URL) {
+    // Premier déploiement, avant que la base soit reliée : rien à faire.
+    console.warn("DATABASE_URL absent : étape ignorée.");
+    return;
+  }
+  const { db, pool } = createDb(process.env.DATABASE_URL!);
+  const [{ n }] = await db.select({ n: count() }).from(sheets);
+  if (n === 0 && existsSync(SNAPSHOT)) {
+    // Les commandes propres à psql (lignes commençant par « \ ») ne sont pas du SQL.
+    const sql = gunzipSync(readFileSync(SNAPSHOT))
+      .toString("utf8")
+      .split("\n")
+      .filter((l) => !l.startsWith("\\"))
+      .join("\n");
+    const client = await pool.connect();
+    try {
+      await client.query("BEGIN");
+      await client.query(sql);
+      await client.query("COMMIT");
+      console.log("Instantané des fiches importé.");
+    } catch (e) {
+      await client.query("ROLLBACK");
+      throw e;
+    } finally {
+      // L'instantané change le search_path de la connexion : elle est fermée plutôt que réutilisée.
+      client.release(true);
+    }
+  }
+
+  const email = process.env.ADMIN_EMAIL?.trim().toLowerCase();
+  const password = process.env.ADMIN_PASSWORD;
+  if (email && password) {
+    const existing = await db.query.users.findFirst({ where: eq(users.email, email) });
+    if (!existing) {
+      const problem = passwordProblem(password);
+      if (problem) throw new Error(`ADMIN_PASSWORD : ${problem}`);
+      const r = await registerUser(db, { email, password, displayName: process.env.ADMIN_NAME || "Administrateur" });
+      if (!("error" in r)) {
+        await db.update(users).set({ role: "admin", emailVerifiedAt: new Date() }).where(eq(users.id, r.user.id));
+        console.log(`Compte administrateur créé : ${email}`);
+      }
+    }
+  }
+  await pool.end();
+}
+
+main().catch((e) => {
+  console.error(e?.message ?? e);
+  process.exit(1);
+});

@@ -163,6 +163,9 @@ textarea { min-height: 160px; resize: vertical; line-height: 1.55; }
 .lectures .texte { display: grid; gap: 4px; min-width: 0; }
 .lectures .ph { font-family: var(--serif); font-size: 1.25rem; color: var(--nuit); }
 .lectures cite { font-style: italic; color: var(--sepia); font-weight: 600; }
+.lectures cite a { color: inherit; text-decoration: none; }
+.lectures cite a:hover { text-decoration: underline; }
+.lectures .voir { font-size: .88rem; color: var(--sepia); }
 .lectures .partie { font-size: .9rem; color: var(--nuit); border-left: 2px solid var(--sepia); padding-left: 8px; }
 .lectures p { font-size: .98rem; line-height: 1.55; }
 .version p { font-family: var(--serif); font-size: 1.12rem; line-height: 1.5; white-space: pre-wrap; }
