@@ -1,11 +1,13 @@
-import { and, desc, eq, gte, inArray, isNotNull, isNull, lt, ne } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNotNull, isNull, lt, ne, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import type { Db } from "@/db";
-import { sheets, syncRuns, videos } from "@/db/schema";
+import { sheets, speakers, syncRuns, videos } from "@/db/schema";
 import { addDays, parisDay } from "./dates";
 import { getVideos, linkedVideoIds, listPlaylist, type Fetch } from "./youtube-api";
 import type { SheetProposal } from "./ai";
 import { cleanTitle } from "./youtube";
 import { formatNotions } from "./notions";
+import { authorBio, authorLink } from "./authors";
 
 export const DEFAULT_PLAYLIST = "PL2d4vA4vfs79RPBnT3PFdOjyXaWPdquGv";
 const SHORT_MAX = 180;
@@ -147,6 +149,13 @@ async function doSync(db: Db, opts: SyncOptions): Promise<SyncReport> {
       }
     }
 
+    if (proposal?.author) {
+      await attachAuthor(db, proposal.author, [
+        { id: short.id, youtubeId: s.id, description: s.description },
+        ...(lectureId && lecture ? [{ id: lectureId, youtubeId: lecture.id, description: lecture.description }] : []),
+      ]);
+    }
+
     // J+1, s'il est encore à venir et libre ; sinon file éditoriale.
     let day: string | null = null;
     if (s.publishedAt && latestByDay.get(parisDay(s.publishedAt)) === s.id) {
@@ -215,10 +224,18 @@ export async function draftWithAi(
   opts: { sheetIds?: string[]; limit?: number } = {},
 ): Promise<DraftReport> {
   const report: DraftReport = { drafted: 0, failed: [] };
+  const lectureVideo = alias(videos, "lecture_video");
   const rows = await db
-    .select({ sheet: sheets, title: videos.title, description: videos.description })
+    .select({
+      sheet: sheets,
+      title: videos.title,
+      description: videos.description,
+      youtubeId: videos.youtubeId,
+      lecture: { id: lectureVideo.id, youtubeId: lectureVideo.youtubeId, description: lectureVideo.description },
+    })
     .from(sheets)
     .innerJoin(videos, eq(videos.id, sheets.shortVideoId))
+    .leftJoin(lectureVideo, eq(lectureVideo.id, sheets.lectureVideoId))
     .where(
       and(
         ne(sheets.status, "validee"),
@@ -229,7 +246,7 @@ export async function draftWithAi(
     .orderBy(desc(videos.publishedAt))
     .limit(opts.limit ?? 10);
 
-  for (const { sheet, title, description } of rows) {
+  for (const { sheet, title, description, youtubeId, lecture } of rows) {
     let proposal: SheetProposal | null;
     try {
       proposal = await propose({ title, description: description ?? "" });
@@ -251,9 +268,40 @@ export async function draftWithAi(
         updatedAt: new Date(),
       })
       .where(and(eq(sheets.id, sheet.id), eq(sheets.aiDrafted, false), ne(sheets.status, "validee")));
+    if (proposal.author && sheet.shortVideoId) {
+      await attachAuthor(db, proposal.author, [
+        { id: sheet.shortVideoId, youtubeId, description },
+        ...(lecture?.id ? [{ id: lecture.id, youtubeId: lecture.youtubeId!, description: lecture.description }] : []),
+      ]);
+    }
     report.drafted++;
   }
   return report;
+}
+
+const BIO_TODO = "Présentation à compléter : la description YouTube ne présente pas l'auteur.";
+
+// Rattache l'auteur nommé dans la description aux vidéos qui n'en ont pas encore.
+// Sa présentation est reprise telle quelle de la description du Short ou de la vidéo longue ;
+// il reste « non vérifié » tant qu'un membre de l'équipe ne l'a pas contrôlé.
+export async function attachAuthor(db: Db, name: string, vids: { id: string; youtubeId: string; description: string | null }[]) {
+  const fullName = name.trim().slice(0, 120);
+  if (!fullName) return;
+  const free = (await db.select({ id: videos.id }).from(videos).where(and(inArray(videos.id, vids.map((v) => v.id)), isNull(videos.speakerId)))).map((v) => v.id);
+  if (free.length === 0) return;
+
+  const withBio = vids.map((v) => ({ v, bio: authorBio(v.description, fullName) })).find((x) => x.bio);
+  const link = vids.map((v) => authorLink(v.description)).find(Boolean) ?? null;
+  const qualification = withBio?.bio ?? BIO_TODO;
+  const qualificationSource = withBio ? `Description YouTube : https://www.youtube.com/watch?v=${withBio.v.youtubeId}` : link;
+
+  let speaker = await db.query.speakers.findFirst({ where: sql`lower(${speakers.fullName}) = lower(${fullName})` });
+  if (!speaker) {
+    [speaker] = await db.insert(speakers).values({ fullName, qualification, qualificationSource }).returning();
+  } else if (!speaker.verifiedAt && speaker.qualification === BIO_TODO && withBio) {
+    await db.update(speakers).set({ qualification, qualificationSource }).where(eq(speakers.id, speaker.id));
+  }
+  await db.update(videos).set({ speakerId: speaker.id }).where(inArray(videos.id, free));
 }
 
 // ---------- programmation quotidienne ----------

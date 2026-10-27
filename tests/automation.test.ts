@@ -155,4 +155,17 @@ describe("brouillons IA pour les fiches déjà importées", () => {
     // Une fiche déjà proposée par l'IA n'est pas réécrite.
     expect((await draftWithAi(ctx.db, propose, { sheetIds: [todo.id] })).drafted).toBe(0);
   });
+
+  it("rattache l'auteur avec la présentation reprise de la vidéo longue, sans le marquer vérifié", async () => {
+    const [lv] = await ctx.db.insert(videos).values({ youtubeId: "longueAUTE1", kind: "conference", title: "Conférence", description: "🎓 Marie Curieuse est professeure de philosophie à Nantes. 🔗 https://exemple.org" }).returning();
+    const [sv] = await ctx.db.insert(videos).values({ youtubeId: "courtAUTEU1", kind: "short", title: "Short", description: "Extrait, Marie Curieuse" }).returning();
+    const [todo] = await ctx.db.insert(sheets).values({ theme: "à définir", question: "?", shortVideoId: sv.id, lectureVideoId: lv.id, status: "a_verifier" }).returning();
+    const propose = async () => ({ title: "Interrogeons-nous sur la curiosité", notions: ["la raison"] as Notion[], question: "A ou B ?", synthesis: "Deux phrases.", author: "Marie Curieuse", missing: null });
+
+    expect((await draftWithAi(ctx.db, propose, { sheetIds: [todo.id] })).drafted).toBe(1);
+    const short = await ctx.db.query.videos.findFirst({ where: eq(videos.id, sv.id) });
+    const speaker = await ctx.db.query.speakers.findFirst({ where: eq(speakers.id, short!.speakerId!) });
+    expect(speaker).toMatchObject({ fullName: "Marie Curieuse", qualification: "Marie Curieuse est professeure de philosophie à Nantes.", verifiedAt: null });
+    expect((await ctx.db.query.videos.findFirst({ where: eq(videos.id, lv.id) }))?.speakerId).toBe(speaker!.id);
+  });
 });
