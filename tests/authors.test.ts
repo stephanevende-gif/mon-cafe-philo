@@ -64,4 +64,10 @@ describe("Photo de la fiche auteur", () => {
     );
     expect(bioFromProfilePage("<p>rien</p>")).toBeNull();
   });
+
+  it("écarte les styles hérités de Word et la bibliographie", () => {
+    const html = `<div data-type="author-author-biography"><!--[if gte mso 9]><xml><w:LatentStyles Name="Normal"/></xml><![endif]--><style>p.MsoNormal { margin: 0 }</style>
+      <p>table.MsoNormalTable {mso-style-name:"Tableau Normal";} Armelle GRENOUILLOUX est psychiatre et docteur en philosophie. Bibliographie : Aux Éditions M-Éditer : - Un livre.</p></div><div data-type="author-author-website"></div>`;
+    expect(bioFromProfilePage(html)).toBe("Armelle GRENOUILLOUX est psychiatre et docteur en philosophie.");
+  });
 });
