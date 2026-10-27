@@ -297,8 +297,15 @@ export async function attachAuthor(db: Db, name: string, vids: { id: string; you
 
   let speaker = await db.query.speakers.findFirst({ where: sql`lower(${speakers.fullName}) = lower(${fullName})` });
   if (!speaker) {
-    [speaker] = await db.insert(speakers).values({ fullName, qualification, qualificationSource }).returning();
-  } else if (!speaker.verifiedAt && speaker.qualification === BIO_TODO && withBio) {
+    // Portrait provisoire : l'image de la vidéo longue (ou du Short) de la chaîne, que l'équipe peut remplacer.
+    const pictured = vids[vids.length - 1];
+    const photoUrl = `https://i.ytimg.com/vi/${pictured.youtubeId}/hqdefault.jpg`;
+    [speaker] = await db.insert(speakers).values({ fullName, qualification, qualificationSource, photoUrl }).returning();
+  } else if (!speaker.photoUrl) {
+    const pictured = vids[vids.length - 1];
+    await db.update(speakers).set({ photoUrl: `https://i.ytimg.com/vi/${pictured.youtubeId}/hqdefault.jpg` }).where(eq(speakers.id, speaker.id));
+  }
+  if (!speaker.verifiedAt && speaker.qualification === BIO_TODO && withBio) {
     await db.update(speakers).set({ qualification, qualificationSource }).where(eq(speakers.id, speaker.id));
   }
   await db.update(videos).set({ speakerId: speaker.id }).where(inArray(videos.id, free));
