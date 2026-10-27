@@ -61,3 +61,33 @@ export function publisherPage(descriptions: (string | null | undefined)[], name:
   }
   return null;
 }
+
+// Photo de l'auteur sur sa fiche (page HTML) : image de partage (og:image), sinon première image dont
+// le texte alternatif ou l'adresse porte le nom de l'auteur. Rien n'est renvoyé si la page n'en a pas.
+export function photoFromProfilePage(html: string, pageUrl: string, name: string): string | null {
+  const abs = (src: string) => {
+    try {
+      return new URL(src.replace(/&amp;/g, "&"), pageUrl).toString().replace(/^http:\/\//i, "https://");
+    } catch {
+      return null;
+    }
+  };
+  const og =
+    html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i) ??
+    html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);
+  if (og && !/logo/i.test(og[1])) return abs(og[1]);
+  const wanted = fold(name.split(/\s+/).pop() ?? "");
+  for (const tag of html.match(/<img\b[^>]*>/gi) ?? []) {
+    const src = tag.match(/\bsrc=["']([^"']+)["']/i)?.[1];
+    const alt = tag.match(/\balt=["']([^"']*)["']/i)?.[1] ?? "";
+    if (!src || /logo|icon|sprite/i.test(src)) continue;
+    let hay = "";
+    try {
+      hay = fold(alt) + fold(src);
+    } catch {
+      hay = fold(alt);
+    }
+    if (wanted && hay.includes(wanted)) return abs(src);
+  }
+  return null;
+}

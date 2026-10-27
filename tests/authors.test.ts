@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { authorBio, authorLink, isPublisherPage, publisherPage } from "@/lib/authors";
+import { authorBio, authorLink, isPublisherPage, photoFromProfilePage, publisherPage } from "@/lib/authors";
 
 describe("Présentation de l'auteur", () => {
   it("reprend telle quelle la présentation de la description YouTube", () => {
@@ -36,5 +36,18 @@ describe("Fiche auteur M-Éditer", () => {
     expect(publisherPage(ds, "André Guigot")).toBe("https://m-editer.izibookstore.com/auteur/35/andre-guigot");
     expect(publisherPage(ds, "David Christoffel")).toBeNull();
     expect(isPublisherPage("https://m-editer.izibookstore.com/auteur/12/jean-luc-nativelle")).toBe(true);
+  });
+});
+
+describe("Photo de la fiche auteur", () => {
+  const page = "https://m-editer.izibookstore.com/auteur/12/jean-luc-nativelle";
+  it("prend l'image de partage de la page", () => {
+    const html = `<head><meta property="og:image" content="/media/auteurs/nativelle.jpg"></head>`;
+    expect(photoFromProfilePage(html, page, "Jean-Luc Nativelle")).toBe("https://m-editer.izibookstore.com/media/auteurs/nativelle.jpg");
+  });
+  it("sinon, l'image qui porte le nom de l'auteur, jamais le logo", () => {
+    const html = `<img src="/img/logo.png" alt="M-Éditer"><img src="/media/a12.jpg" alt="Jean-Luc NATIVELLE">`;
+    expect(photoFromProfilePage(html, page, "Jean-Luc Nativelle")).toBe("https://m-editer.izibookstore.com/media/a12.jpg");
+    expect(photoFromProfilePage(`<img src="/img/logo.png">`, page, "Jean-Luc Nativelle")).toBeNull();
   });
 });

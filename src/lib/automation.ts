@@ -7,7 +7,7 @@ import { getVideos, linkedVideoIds, listPlaylist, type Fetch } from "./youtube-a
 import type { SheetProposal } from "./ai";
 import { cleanTitle } from "./youtube";
 import { formatNotions } from "./notions";
-import { authorBio, authorLink, publisherPage } from "./authors";
+import { authorBio, authorLink, isPublisherPage, photoFromProfilePage, publisherPage } from "./authors";
 import { drawPortraitFromUrl } from "./portrait";
 
 export const DEFAULT_PLAYLIST = "PL2d4vA4vfs79RPBnT3PFdOjyXaWPdquGv";
@@ -290,6 +290,17 @@ export async function findProfile(db: Db, name: string, vids: { description: str
   return publisherPage(all, name) ?? vids.map((v) => authorLink(v.description)).find(Boolean)?.replace(/^http:\/\//i, "https://") ?? null;
 }
 
+// Photo de l'auteur sur sa fiche des Éditions M-Éditer, si elle en a une.
+export async function profilePhoto(profileUrl: string | null, name: string, fetchImpl: typeof fetch = fetch): Promise<string | null> {
+  if (!profileUrl || !isPublisherPage(profileUrl)) return null;
+  try {
+    const res = await fetchImpl(profileUrl);
+    return res.ok ? photoFromProfilePage(await res.text(), profileUrl, name) : null;
+  } catch {
+    return null;
+  }
+}
+
 const BIO_TODO = "Présentation à compléter : la description YouTube ne présente pas l'auteur.";
 
 // Rattache l'auteur nommé dans la description aux vidéos qui n'en ont pas encore.
@@ -317,8 +328,8 @@ export async function attachAuthor(
   if (!speaker) {
     // Portrait : l'image de la vidéo longue (ou du Short) de la chaîne, transformée en dessin ; l'équipe peut la remplacer.
     const pictured = vids[vids.length - 1];
-    const photoUrl = `https://i.ytimg.com/vi/${pictured.youtubeId}/hqdefault.jpg`;
     const profileUrl = await findProfile(db, fullName, vids);
+    const photoUrl = (await profilePhoto(profileUrl, fullName)) ?? `https://i.ytimg.com/vi/${pictured.youtubeId}/hqdefault.jpg`;
     [speaker] = await db
       .insert(speakers)
       .values({ fullName, qualification, qualificationSource, photoUrl, portrait: await draw(photoUrl), profileUrl })

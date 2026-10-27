@@ -25,6 +25,8 @@ export async function Donc({ ctx }: { ctx: JourneyContext }) {
   const d = await getSheetDetails(db, ctx.sheet);
   const speaker = d.short?.speaker ?? d.lecture?.speaker ?? null;
   const authentic = authenticityConfirmed(d);
+  // Le portrait dessiné ; à défaut, l'image YouTube d'origine (seule image externe autorisée par le site).
+  const picture = speaker?.portrait ?? (speaker?.photoUrl?.startsWith("https://i.ytimg.com/") ? speaker.photoUrl : null);
 
   return (
     <main className="page">
@@ -52,9 +54,9 @@ export async function Donc({ ctx }: { ctx: JourneyContext }) {
 
         {speaker && (
           <div className="speaker">
-            <div className={`band${speaker.portrait ? " drawn" : ""}`} aria-hidden={!(speaker.portrait ?? speaker.photoUrl)}>
-              {speaker.portrait ?? speaker.photoUrl ? (
-                <img src={(speaker.portrait ?? speaker.photoUrl)!} alt={`Portrait dessiné de ${speaker.fullName}`} />
+            <div className={`band${speaker.portrait ? " drawn" : ""}`} aria-hidden={!picture}>
+              {picture ? (
+                <img src={picture} alt={`Portrait de ${speaker.fullName}`} />
               ) : (
                 <span>{speaker.fullName.charAt(0)}</span>
               )}

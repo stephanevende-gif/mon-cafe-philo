@@ -1,10 +1,10 @@
 import "dotenv/config";
 // Rattache les auteurs relevés par l'IA (fiches déjà rédigées) à leurs vidéos, avec la présentation reprise de la description YouTube,
 // puis complète pour chaque auteur le lien de présentation et le portrait dessiné qui manquent.
-import { eq, isNull, or } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { createDb } from "../src/db";
 import { sheets, speakers, videos } from "../src/db/schema";
-import { attachAuthor, findProfile } from "../src/lib/automation";
+import { attachAuthor, findProfile, profilePhoto } from "../src/lib/automation";
 import { drawPortraitFromUrl } from "../src/lib/portrait";
 
 async function main() {
@@ -19,12 +19,17 @@ async function main() {
   }
 
   const report: string[] = [];
-  for (const sp of await db.select().from(speakers).where(or(isNull(speakers.profileUrl), isNull(speakers.portrait)))) {
+  // Auteurs sans lien ou sans portrait, ou dont le portrait part encore d'une image de vidéo.
+  const todo = (await db.select().from(speakers)).filter((sp) => !sp.profileUrl || !sp.portrait || sp.photoUrl?.includes("i.ytimg.com"));
+  for (const sp of todo) {
     const own = await db.select({ description: videos.description }).from(videos).where(eq(videos.speakerId, sp.id));
     const profileUrl = sp.profileUrl ?? (await findProfile(db, sp.fullName, own));
-    const portrait = sp.portrait ?? (sp.photoUrl ? await drawPortraitFromUrl(sp.photoUrl) : null);
-    await db.update(speakers).set({ profileUrl, portrait }).where(eq(speakers.id, sp.id));
-    report.push(`${sp.fullName} : lien ${profileUrl ?? "à trouver"} ; portrait ${portrait ? "dessiné" : "non dessiné (image inaccessible)"}`);
+    // Priorité à la photo de la fiche auteur M-Éditer ; sinon l'image de la vidéo.
+    const fromProfile = !sp.photoUrl || sp.photoUrl.includes("i.ytimg.com") ? await profilePhoto(profileUrl, sp.fullName) : null;
+    const photoUrl = fromProfile ?? sp.photoUrl;
+    const portrait = fromProfile || !sp.portrait ? (photoUrl ? await drawPortraitFromUrl(photoUrl) : null) : sp.portrait;
+    await db.update(speakers).set({ profileUrl, photoUrl, portrait: portrait ?? sp.portrait }).where(eq(speakers.id, sp.id));
+    report.push(`${sp.fullName} : lien ${profileUrl ?? "à trouver"} ; photo ${fromProfile ? "de la fiche auteur" : "de la vidéo"} ; portrait ${portrait ? "dessiné" : "non dessiné (image inaccessible)"}`);
   }
   console.log(report.join("\n"));
   await pool.end();
