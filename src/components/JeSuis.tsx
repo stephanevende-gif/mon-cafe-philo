@@ -120,10 +120,13 @@ export async function JeSuis({ ctx, message }: { ctx: JourneyContext; message?: 
               <h2 id="lectures-titre" className="invite">Quels philosophes lire pour approfondir la question&nbsp;?</h2>
               <ol>
                 {ctx.sheet.readings.map((r) => (
-                  <li key={r.philosopher + r.book}>
-                    <span className="ph">{r.philosopher}</span>
-                    <cite>{r.book}</cite>
-                    <p>{r.description}</p>
+                  <li key={r.philosopher + r.book} className={r.cover ? "avec-couverture" : undefined}>
+                    {r.cover && <img className="couverture" src={r.cover} alt={`Couverture de ${r.book}, ${r.philosopher}`} />}
+                    <div className="texte">
+                      <span className="ph">{r.philosopher}</span>
+                      <cite>{r.book}</cite>
+                      <p>{r.description}</p>
+                    </div>
                   </li>
                 ))}
               </ol>

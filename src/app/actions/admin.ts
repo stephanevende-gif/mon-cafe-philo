@@ -11,7 +11,8 @@ import { isDay } from "@/lib/dates";
 import { parseDuration, parseYouTubeId } from "@/lib/youtube";
 import { formatNotions, isNotion } from "@/lib/notions";
 import { portraitFromUrl } from "@/lib/portrait";
-import { cleanReadings } from "@/lib/readings";
+import { cleanReadings, keepCovers } from "@/lib/readings";
+import { withCovers } from "@/lib/covers";
 
 const UUID = /^[0-9a-f-]{36}$/;
 
@@ -84,6 +85,11 @@ export async function saveSheet(fd: FormData) {
     authenticityVerifiedBy = previous?.authenticityVerifiedBy ?? editor.id;
   }
 
+  // Les couvertures déjà trouvées sont gardées ; un livre nouveau reçoit la sienne s'il en existe une.
+  const before = id ? await db.query.sheets.findFirst({ where: eq(sheets.id, id) }) : null;
+  const typed = readingsFrom(fd);
+  const readings = typed ? await withCovers(keepCovers(typed, before?.readings)) : null;
+
   const values = {
     day,
     title,
@@ -92,7 +98,7 @@ export async function saveSheet(fd: FormData) {
     synthesis,
     problem: str(fd, "probleme", 700),
     solutionQuestion: str(fd, "solution", 400),
-    readings: readingsFrom(fd),
+    readings,
     shortVideoId,
     lectureVideoId,
     bookId: uuid(fd, "livre"),

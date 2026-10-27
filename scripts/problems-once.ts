@@ -1,12 +1,14 @@
 import "dotenv/config";
-import { and, desc, eq, isNull, notLike, or } from "drizzle-orm";
+import { and, desc, eq, isNotNull, isNull, notLike, or } from "drizzle-orm";
 import { createDb } from "../src/db";
 import { sheets } from "../src/db/schema";
 import { aiEnabled, proposeProblem, proposeReadings } from "../src/lib/ai";
 import { cleanReadings } from "../src/lib/readings";
+import { withCovers } from "../src/lib/covers";
 
 // Complète les fiches déjà rédigées qui n'ont pas encore leur fin de page « Je suis » :
 // le problème à surmonter, la question de solution et les trois philosophes à lire.
+// Les couvertures des livres conseillés sont ajoutées quand Open Library en connaît une.
 // Seuls ces champs sont écrits, et seulement s'ils sont vides ; le reste de la fiche n'est pas touché.
 async function main() {
   if (!aiEnabled()) throw new Error("Clé Anthropic absente (ANTHROPIC_API_KEY ou CAFE_PHILO_ANTHROPIC_KEY)");
@@ -27,13 +29,21 @@ async function main() {
     }
     if (!s.readings) {
       const r = await proposeReadings(s);
-      if (r?.length) set.readings = cleanReadings(r);
+      if (r?.length) set.readings = await withCovers(cleanReadings(r));
     }
     if (!Object.keys(set).length) continue;
     await db.update(sheets).set({ ...set, updatedAt: new Date() }).where(eq(sheets.id, s.id));
     done.push({ question: s.question, ...set });
   }
-  console.log(JSON.stringify(done, null, 2));
+  // Couvertures encore manquantes sur les lectures déjà enregistrées.
+  const covers = [];
+  for (const s of await db.select({ id: sheets.id, readings: sheets.readings }).from(sheets).where(isNotNull(sheets.readings))) {
+    if (!s.readings?.some((r) => !r.cover)) continue;
+    const readings = await withCovers(s.readings);
+    await db.update(sheets).set({ readings }).where(eq(sheets.id, s.id));
+    covers.push(...readings.map((r) => `${r.philosopher}, ${r.book} : ${r.cover ? "couverture trouvée" : "pas de couverture"}`));
+  }
+  console.log(JSON.stringify({ done: done.map((d) => ({ ...d, readings: d.readings?.map(({ cover, ...r }) => ({ ...r, cover: !!cover })) })), covers }, null, 2));
   await pool.end();
 }
 main().catch((e) => { console.error(String(e?.message ?? e)); process.exit(1); });

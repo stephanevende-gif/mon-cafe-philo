@@ -17,6 +17,8 @@ export interface Reading {
   philosopher: string;
   book: string;
   description: string;
+  // Couverture du livre (JPEG en data URL), quand une vraie couverture a été trouvée.
+  cover?: string;
 }
 
 export const roleEnum = pgEnum("role", ["membre", "editeur", "admin"]);
