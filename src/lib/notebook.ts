@@ -10,7 +10,7 @@ export async function addEntry(
   db: Db,
   userId: string,
   sheetId: string,
-  stage: "je_pense" | "je_suis",
+  stage: "je_pense" | "donc" | "je_suis",
   body: string,
 ) {
   const text = body.trim().slice(0, MAX_ENTRY_LENGTH);

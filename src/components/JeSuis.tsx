@@ -12,7 +12,19 @@ import { AccessEnded } from "./AccessEnded";
 import { Notice } from "./Notice";
 import { SiteFoot } from "./SiteFoot";
 
-const STAGE_LABEL = { je_pense: "Je pense", je_suis: "Je suis" } as const;
+const STAGE_LABEL = { je_pense: "Je pense", donc: "Donc ?", je_suis: "Je suis" } as const;
+
+// Ce que la page demande au lecteur selon le nombre de versions déjà écrites.
+function nextPrompt(count: number, helpSolution: boolean): { invite?: string; label: string; placeholder: string } {
+  const label = `Version ${count + 1}`;
+  if (count === 0) return { label: "Ma première réflexion", placeholder: "Ce que je pense de cette question…" };
+  if (count === 1)
+    return { invite: "Après l'écoute de l'auteur, qu'en pensez-vous maintenant ?", label, placeholder: "Nuancer, compléter, objecter à ma propre pensée…" };
+  if (count === 2 && helpSolution) return { invite: "Quelle solution proposeriez-vous ?", label: `${label} : ma solution`, placeholder: "La solution que je propose…" };
+  if (count === 3)
+    return { invite: "Qu'ai-je appris, et que vais-je en retenir ?", label: `${label} : ce que je retiens`, placeholder: "Ce que cette question m'a appris…" };
+  return { label, placeholder: "Nuancer, compléter, objecter à ma propre pensée…" };
+}
 
 export async function JeSuis({ ctx, message }: { ctx: JourneyContext; message?: string }) {
   const here = `${ctx.base}/je-suis`;
@@ -30,6 +42,7 @@ export async function JeSuis({ ctx, message }: { ctx: JourneyContext; message?: 
   const shown = entries.length > 2 ? [entries[0], entries[entries.length - 1]] : entries;
   // À partir de la version 3, le lecteur est invité à proposer sa solution au problème posé par la question.
   const helpSolution = entries.length >= 2 && !!ctx.sheet.solutionQuestion;
+  const prompt = nextPrompt(entries.length, helpSolution);
 
   return (
     <main className="page">
@@ -63,21 +76,27 @@ export async function JeSuis({ ctx, message }: { ctx: JourneyContext; message?: 
             </div>
           )}
           {helpSolution && (
-            <section className="probleme stack" aria-labelledby="probleme-titre">
+            <section className="probleme" aria-labelledby="probleme-titre">
               <span className="step-label">Pour aller plus loin</span>
-              <h2 id="probleme-titre" className="invite">Quel est alors le problème à surmonter ?</h2>
-              {ctx.sheet.problem && <p>{ctx.sheet.problem}</p>}
-              <p className="solution">{ctx.sheet.solutionQuestion}</p>
-              <p className="muted">Et vous, que proposeriez-vous ? La solution vous appartient.</p>
+              <p className="principe">
+                On ne philosophe pas vraiment tant que l&apos;on ne pose pas un problème, qu&apos;on ne l&apos;instruit pas et qu&apos;on ne s&apos;y confronte pas pour le
+                surmonter, avec et pour les autres. Les solutions évidentes et les réponses sans analyse sont sources d&apos;erreur, et même de faute.
+              </p>
+              <div className="corps">
+                <h2 id="probleme-titre" className="invite">Quel est alors le problème à surmonter&nbsp;?</h2>
+                {ctx.sheet.problem && <p>{ctx.sheet.problem}</p>}
+                <p className="solution">{ctx.sheet.solutionQuestion}</p>
+              </div>
             </section>
           )}
+          {prompt.invite && <p className="invite">{prompt.invite}</p>}
           <form action={saveReflection} className="stack">
             <input type="hidden" name="fiche" value={ctx.sheet.id} />
-            <input type="hidden" name="etape" value={entries.length === 0 ? "je_pense" : "je_suis"} />
+            <input type="hidden" name="etape" value={entries.length === 0 ? "je_pense" : entries.length === 1 ? "donc" : "je_suis"} />
             <input type="hidden" name="retour" value={here} />
             <label>
-              {entries.length === 0 ? "Ma première réflexion" : helpSolution ? `Version ${entries.length + 1} : ma proposition` : `Version ${entries.length + 1}`}
-              <textarea name="texte" id="texte" maxLength={8000} placeholder={helpSolution ? "La solution que je propose…" : "Nuancer, compléter, objecter à ma propre pensée…"} style={{ minHeight: 130 }} />
+              {prompt.label}
+              <textarea name="texte" id="texte" maxLength={8000} placeholder={prompt.placeholder} style={{ minHeight: 130 }} />
               <span className="hint">Les versions précédentes restent intactes.</span>
             </label>
             <div className="row"><button className="btn primary" type="submit">Enregistrer une nouvelle version</button></div>
@@ -94,6 +113,21 @@ export async function JeSuis({ ctx, message }: { ctx: JourneyContext; message?: 
                 ))}
               </div>
             </details>
+          )}
+          {!!ctx.sheet.readings?.length && (
+            <section className="lectures" aria-labelledby="lectures-titre">
+              <span className="step-label">Pour approfondir</span>
+              <h2 id="lectures-titre" className="invite">Quels philosophes lire pour approfondir la question&nbsp;?</h2>
+              <ol>
+                {ctx.sheet.readings.map((r) => (
+                  <li key={r.philosopher + r.book}>
+                    <span className="ph">{r.philosopher}</span>
+                    <cite>{r.book}</cite>
+                    <p>{r.description}</p>
+                  </li>
+                ))}
+              </ol>
+            </section>
           )}
         </div>
         <aside className="side">

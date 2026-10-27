@@ -9,14 +9,23 @@ import {
   timestamp,
   uniqueIndex,
   index,
+  jsonb,
 } from "drizzle-orm/pg-core";
+
+// Un philosophe à lire pour approfondir la question, avec un de ses livres.
+export interface Reading {
+  philosopher: string;
+  book: string;
+  description: string;
+}
 
 export const roleEnum = pgEnum("role", ["membre", "editeur", "admin"]);
 export const tokenPurposeEnum = pgEnum("token_purpose", ["verification", "reinitialisation"]);
 export const accessKindEnum = pgEnum("access_kind", ["essai", "paiement", "attribution"]);
 export const videoKindEnum = pgEnum("video_kind", ["short", "conference"]);
 export const sheetStatusEnum = pgEnum("sheet_status", ["brouillon", "a_verifier", "validee"]);
-export const stageEnum = pgEnum("notebook_stage", ["je_pense", "je_suis"]);
+// « donc » : la version écrite sur la page « Donc ? », après l'écoute de l'auteur.
+export const stageEnum = pgEnum("notebook_stage", ["je_pense", "donc", "je_suis"]);
 export const runKindEnum = pgEnum("run_kind", ["youtube", "planification"]);
 
 const createdAt = () => timestamp("created_at", { withTimezone: true }).notNull().defaultNow();
@@ -140,6 +149,8 @@ export const sheets = pgTable(
     // soumise au lecteur pour sa version 3 (« Quelle solution adopter pour… ? »).
     problem: text("problem"),
     solutionQuestion: text("solution_question"),
+    // Fin de la page « Je suis » : trois philosophes à lire, chacun avec un livre et deux phrases de présentation.
+    readings: jsonb("readings").$type<Reading[]>(),
     shortVideoId: uuid("short_video_id").references(() => videos.id, { onDelete: "set null" }),
     lectureVideoId: uuid("lecture_video_id").references(() => videos.id, { onDelete: "set null" }),
     bookId: uuid("book_id").references(() => books.id, { onDelete: "set null" }),

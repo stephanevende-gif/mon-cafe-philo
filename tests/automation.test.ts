@@ -93,10 +93,10 @@ describe("synchronisation de la playlist", () => {
       apiKey: "test",
       fetchImpl: fakeFetch,
       now: new Date("2026-10-28T12:00:00Z"),
-      propose: async () => ({ title: "Interrogeons-nous sur le passage du temps", notions: ["le temps", "la vérité", "la conscience"], question: "Le temps passe-t-il ou est-ce nous qui passons ?", synthesis: null, problem: "Si le temps passe sans nous, nous le subissons ; si c'est nous qui passons, il n'est plus qu'une mesure.", solutionQuestion: "Quelle solution adopter pour à la fois reconnaître le temps qui nous échappe et rester maîtres de notre durée ?", author: null, missing: "La thèse de l'intervenant n'est pas explicite." }),
+      propose: async () => ({ title: "Interrogeons-nous sur le passage du temps", notions: ["le temps", "la vérité", "la conscience"], question: "Le temps passe-t-il ou est-ce nous qui passons ?", synthesis: null, problem: "Si le temps passe sans nous, nous le subissons ; si c'est nous qui passons, il n'est plus qu'une mesure.", solutionQuestion: "Quelle solution adopter pour à la fois reconnaître le temps qui nous échappe et rester maîtres de notre durée ?", readings: [{ philosopher: " Henri Bergson ", book: "Essai sur les données immédiates de la conscience", description: "Deux phrases." }, { philosopher: "", book: "Sans auteur", description: "Incomplète." }], author: null, missing: "La thèse de l'intervenant n'est pas explicite." }),
     });
     const s = await ctx.db.query.sheets.findFirst({ where: eq(sheets.day, "2026-10-29") });
-    expect(s).toMatchObject({ theme: "la conscience, le temps, la vérité", title: "Interrogeons-nous sur le passage du temps", question: "Le temps passe-t-il ou est-ce nous qui passons ?", status: "a_verifier", aiDrafted: true, synthesis: null, problem: "Si le temps passe sans nous, nous le subissons ; si c'est nous qui passons, il n'est plus qu'une mesure.", solutionQuestion: "Quelle solution adopter pour à la fois reconnaître le temps qui nous échappe et rester maîtres de notre durée ?" });
+    expect(s).toMatchObject({ theme: "la conscience, le temps, la vérité", title: "Interrogeons-nous sur le passage du temps", question: "Le temps passe-t-il ou est-ce nous qui passons ?", status: "a_verifier", aiDrafted: true, synthesis: null, problem: "Si le temps passe sans nous, nous le subissons ; si c'est nous qui passons, il n'est plus qu'une mesure.", solutionQuestion: "Quelle solution adopter pour à la fois reconnaître le temps qui nous échappe et rester maîtres de notre durée ?", readings: [{ philosopher: "Henri Bergson", book: "Essai sur les données immédiates de la conscience", description: "Deux phrases." }] });
     expect(s?.editorialNotes).toContain("pas explicite");
   });
 
@@ -162,7 +162,7 @@ describe("brouillons IA pour les fiches déjà importées", () => {
     const [v2] = await ctx.db.insert(videos).values({ youtubeId: "ancienBBBB2", kind: "short", title: "Short validé", description: "" }).returning();
     const [todo] = await ctx.db.insert(sheets).values({ theme: "à définir", question: "[Question à rédiger] Ancien Short", shortVideoId: v1.id, status: "a_verifier", editorialNotes: "Thème, question et synthèse à rédiger.\nIntervenant à identifier et à vérifier." }).returning();
     const [done] = await ctx.db.insert(sheets).values({ theme: "vérité", question: "Q validée ?", synthesis: "S.", shortVideoId: v2.id, status: "validee" }).returning();
-    const propose = async () => ({ title: "Interrogeons-nous sur la place du courage", notions: ["la raison", "le devoir", "la liberté"] as Notion[], question: "Le courage s'apprend-il ou se révèle-t-il ?", synthesis: "Deux phrases.", problem: "P.", solutionQuestion: "S ?", author: null, missing: null });
+    const propose = async () => ({ title: "Interrogeons-nous sur la place du courage", notions: ["la raison", "le devoir", "la liberté"] as Notion[], question: "Le courage s'apprend-il ou se révèle-t-il ?", synthesis: "Deux phrases.", problem: "P.", solutionQuestion: "S ?", readings: [], author: null, missing: null });
 
     const r = await draftWithAi(ctx.db, propose, { sheetIds: [todo.id, done.id] });
     expect(r).toEqual({ drafted: 1, failed: [] });
@@ -182,7 +182,7 @@ describe("brouillons IA pour les fiches déjà importées", () => {
     const [lv] = await ctx.db.insert(videos).values({ youtubeId: "longueAUTE1", kind: "conference", title: "Conférence", description: "🎓 Marie Curieuse est professeure de philosophie à Nantes. 🔗 https://exemple.org" }).returning();
     const [sv] = await ctx.db.insert(videos).values({ youtubeId: "courtAUTEU1", kind: "short", title: "Short", description: "Extrait, Marie Curieuse" }).returning();
     const [todo] = await ctx.db.insert(sheets).values({ theme: "à définir", question: "?", shortVideoId: sv.id, lectureVideoId: lv.id, status: "a_verifier" }).returning();
-    const propose = async () => ({ title: "Interrogeons-nous sur la curiosité", notions: ["la raison"] as Notion[], question: "A ou B ?", synthesis: "Deux phrases.", problem: "P.", solutionQuestion: "S ?", author: "Marie Curieuse", missing: null });
+    const propose = async () => ({ title: "Interrogeons-nous sur la curiosité", notions: ["la raison"] as Notion[], question: "A ou B ?", synthesis: "Deux phrases.", problem: "P.", solutionQuestion: "S ?", readings: [], author: "Marie Curieuse", missing: null });
 
     expect((await draftWithAi(ctx.db, propose, { sheetIds: [todo.id], portrait: async () => "data:image/jpeg;base64,photo" })).drafted).toBe(1);
     const short = await ctx.db.query.videos.findFirst({ where: eq(videos.id, sv.id) });

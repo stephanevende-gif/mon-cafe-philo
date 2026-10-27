@@ -120,7 +120,9 @@ textarea { min-height: 160px; resize: vertical; line-height: 1.55; }
 .who .nm { font-family: var(--serif); font-size: 1.4rem; color: var(--nuit); line-height: 1.2; }
 .who .q { font-size: .88rem; }
 .verified { font-size: .78rem; color: var(--sepia); font-weight: 600; }
-.medias { display: grid; grid-template-columns: .62fr 1fr; gap: 14px; align-items: start; }
+.media.ecouter { max-width: 300px; }
+.media.loin { max-width: 640px; }
+.reflexion { border-top: 1px solid var(--filet); border-bottom: 1px solid var(--filet); padding-block: 22px; }
 .media { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .media .kind { display: flex; justify-content: space-between; font-size: .7rem; letter-spacing: .12em; text-transform: uppercase; font-weight: 700; color: var(--gris); }
 .media .ttl { font-family: var(--serif); font-size: 1.05rem; color: var(--nuit); line-height: 1.3; }
@@ -147,9 +149,17 @@ textarea { min-height: 160px; resize: vertical; line-height: 1.55; }
 .version .meta { display: flex; justify-content: space-between; gap: 8px; font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; color: var(--gris); font-weight: 700; }
 .version .meta span { white-space: nowrap; }
 .version .meta { flex-wrap: wrap; }
-.probleme { border-top: 1px solid var(--filet); border-bottom: 1px solid var(--filet); padding-block: 20px; gap: 12px; }
-.probleme p { font-size: 1.02rem; line-height: 1.6; }
-.probleme .solution { font-family: var(--serif); color: var(--nuit); font-size: clamp(1.15rem, 2.4vw, 1.4rem); line-height: 1.4; }
+.probleme { display: grid; gap: 14px; border-top: 1px solid var(--filet); border-bottom: 1px solid var(--filet); padding-block: 20px; }
+.probleme .corps { display: grid; gap: 12px; min-width: 0; }
+.probleme .corps p { font-size: 1.02rem; line-height: 1.6; }
+.probleme .principe { font-size: .92rem; font-style: italic; line-height: 1.55; color: var(--gris); border-left: 2px solid var(--sepia); padding-left: 14px; }
+.probleme .corps .solution { font-family: var(--serif); color: var(--nuit); font-size: clamp(1.15rem, 2.4vw, 1.4rem); line-height: 1.4; }
+.lectures { display: grid; gap: 14px; border-top: 1px solid var(--nuit); padding-top: 22px; }
+.lectures ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 18px; }
+.lectures li { display: grid; gap: 4px; }
+.lectures .ph { font-family: var(--serif); font-size: 1.25rem; color: var(--nuit); }
+.lectures cite { font-style: italic; color: var(--sepia); font-weight: 600; }
+.lectures p { font-size: .98rem; line-height: 1.55; }
 .version p { font-family: var(--serif); font-size: 1.12rem; line-height: 1.5; white-space: pre-wrap; }
 .side { display: flex; flex-direction: column; gap: 24px; }
 .charte { font-family: var(--serif); font-size: 1.05rem; color: var(--nuit); line-height: 1.4; }
@@ -201,11 +211,14 @@ th { font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color:
   .aside .pledge { grid-column: 1 / -1; }
   .speaker { grid-template-columns: 120px 1fr; }
   .band { min-height: 190px; }
-  .medias { grid-template-columns: .5fr 1fr; }
   .book { display: grid; grid-template-columns: 220px 1fr; text-align: left; align-items: center; gap: 28px; }
   .book .cover { width: 220px; }
   .book .info { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
   .versions { grid-template-columns: 1fr 1fr; }
+  .probleme { grid-template-columns: 1fr 220px; column-gap: 28px; }
+  .probleme .step-label { grid-column: 1 / -1; }
+  .probleme .corps { grid-column: 1; grid-row: 2; }
+  .probleme .principe { grid-column: 2; grid-row: 2; align-self: start; margin-top: 4px; }
 }
 
 /* ---------- ordinateur ---------- */
@@ -218,11 +231,13 @@ th { font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color:
   .page { padding-bottom: 64px; }
   .pense { grid-template-columns: 1fr 320px; gap: 96px; padding: 24px 0 0 64px; }
   .aside { display: flex; border-top: 0; padding-top: 8px; border-left: 1px solid var(--filet); padding-left: 40px; }
-  .donc { grid-template-columns: 1fr 1fr 300px; gap: 36px 48px; grid-template-areas: "head head book" "synth synth book" "speaker media book" "seal seal book"; }
+  .donc { grid-template-columns: 1fr 300px; gap: 36px 64px; grid-template-areas: "head book" "synth book" "speaker book" "ecouter book" "reflexion book" "loin book" "seal book"; }
   .donc .head { grid-area: head; }
   .donc .synth { grid-area: synth; }
   .donc .speaker { grid-area: speaker; }
-  .donc .medias { grid-area: media; grid-template-columns: .62fr 1fr; }
+  .donc .ecouter { grid-area: ecouter; }
+  .donc .reflexion { grid-area: reflexion; }
+  .donc .loin { grid-area: loin; }
   .donc .seal-slot { grid-area: seal; }
   .donc .book { grid-area: book; display: flex; flex-direction: column; text-align: center; border-top: 0; border-left: 1px solid var(--filet); padding: 0 0 0 40px; align-self: start; }
   .donc .book .cover { width: 100%; }

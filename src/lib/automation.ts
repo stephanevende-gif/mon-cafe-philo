@@ -2,6 +2,7 @@ import { and, desc, eq, gte, inArray, isNotNull, isNull, lt, ne, sql } from "dri
 import { alias } from "drizzle-orm/pg-core";
 import type { Db } from "@/db";
 import { sheets, speakers, syncRuns, videos } from "@/db/schema";
+import { cleanReadings } from "./readings";
 import { addDays, parisDay } from "./dates";
 import { getVideos, linkedVideoIds, listPlaylist, type Fetch } from "./youtube-api";
 import type { SheetProposal } from "./ai";
@@ -214,6 +215,7 @@ function proposalFields(p: SheetProposal | null, title: string) {
     synthesis: p?.synthesis?.slice(0, 700) ?? null,
     problem: p?.problem?.slice(0, 700) || null,
     solutionQuestion: p?.solutionQuestion?.slice(0, 400) || null,
+    readings: p?.readings?.length ? cleanReadings(p.readings) : null,
   };
 }
 
@@ -460,6 +462,7 @@ async function doPlan(db: Db, day: string): Promise<PlanResult> {
       synthesis: pick.synthesis,
       problem: pick.problem,
       solutionQuestion: pick.solutionQuestion,
+      readings: pick.readings,
       shortVideoId: pick.shortVideoId,
       lectureVideoId: pick.lectureVideoId,
       bookId: pick.bookId,

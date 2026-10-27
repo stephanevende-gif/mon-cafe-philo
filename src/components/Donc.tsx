@@ -2,7 +2,9 @@ import Link from "next/link";
 import { cleanTitle } from "@/lib/youtube";
 import { db } from "@/db";
 import { currentAccess, requireUser } from "@/lib/auth";
-import { formatDuration } from "@/lib/dates";
+import { formatDuration, formatTime } from "@/lib/dates";
+import { listEntries } from "@/lib/notebook";
+import { saveReflection } from "@/app/actions/notebook";
 import type { JourneyContext } from "@/lib/journey";
 import { authenticityConfirmed, getSheetDetails } from "@/lib/sheets";
 import { Steps } from "./Steps";
@@ -10,9 +12,11 @@ import { Question } from "./Question";
 import { YouTubePlayer } from "./YouTubePlayer";
 import { AccessEnded } from "./AccessEnded";
 import { SiteFoot } from "./SiteFoot";
+import { Notice } from "./Notice";
 
-export async function Donc({ ctx }: { ctx: JourneyContext }) {
-  await requireUser(`${ctx.base}/donc`);
+export async function Donc({ ctx, message }: { ctx: JourneyContext; message?: string }) {
+  const here = `${ctx.base}/donc`;
+  const user = await requireUser(here);
   const access = await currentAccess();
   if (!access?.active || !ctx.sheet) {
     return (
@@ -22,7 +26,7 @@ export async function Donc({ ctx }: { ctx: JourneyContext }) {
       </main>
     );
   }
-  const d = await getSheetDetails(db, ctx.sheet);
+  const [d, entries] = await Promise.all([getSheetDetails(db, ctx.sheet), listEntries(db, user.id, ctx.sheet.id)]);
   const speaker = d.short?.speaker ?? d.lecture?.speaker ?? null;
   const authentic = authenticityConfirmed(d);
   // La photo de l'auteur, gardée dans l'application ; à défaut, l'image YouTube d'origine (seule image externe autorisée par le site).
@@ -74,24 +78,61 @@ export async function Donc({ ctx }: { ctx: JourneyContext }) {
           </div>
         )}
 
-        <div className="medias">
-          {d.short && (
-            <div className="media">
-              <div className="kind"><span>Écouter l&apos;auteur sur cette question</span></div>
-              <YouTubePlayer youtubeId={d.short.youtubeId} title={cleanTitle(d.short.title)} vertical duration={formatDuration(d.short.durationSeconds)} />
-              <span className="ttl">{cleanTitle(d.short.title)}</span>
-            </div>
+        {d.short && (
+          <div className="media ecouter">
+            <div className="kind"><span>Écouter l&apos;auteur sur cette question</span></div>
+            <YouTubePlayer youtubeId={d.short.youtubeId} title={cleanTitle(d.short.title)} vertical duration={formatDuration(d.short.durationSeconds)} />
+            <span className="ttl">{cleanTitle(d.short.title)}</span>
+          </div>
+        )}
+
+        <div className="reflexion stack">
+          {entries.length === 0 ? (
+            <>
+              <p className="invite">Et vous, qu&apos;en pensez-vous&nbsp;?</p>
+              <p className="muted">Commencez par écrire votre première réflexion, avant d&apos;écouter l&apos;auteur.</p>
+              <div className="row"><Link className="btn" href={ctx.base || "/"}>Écrire ma première réflexion : Je pense →</Link></div>
+            </>
+          ) : entries.length === 1 ? (
+            <>
+              <p className="invite">Après l&apos;écoute de l&apos;auteur, qu&apos;en pensez-vous maintenant&nbsp;?</p>
+              <div className="version">
+                <div className="meta"><span>Ma première réflexion</span><span>{formatTime(entries[0].createdAt)}</span></div>
+                <p>{entries[0].body}</p>
+              </div>
+              <Notice code={message} />
+              <form action={saveReflection} className="stack">
+                <input type="hidden" name="fiche" value={d.sheet.id} />
+                <input type="hidden" name="etape" value="donc" />
+                <input type="hidden" name="retour" value={here} />
+                <label>
+                  Version 2
+                  <textarea name="texte" id="texte" maxLength={8000} placeholder="Nuancer, compléter, objecter à ma propre pensée…" style={{ minHeight: 130 }} />
+                  <span className="hint">Votre première réflexion reste intacte.</span>
+                </label>
+                <div className="row"><button className="btn primary" type="submit">Enregistrer ma version 2</button></div>
+              </form>
+            </>
+          ) : (
+            <>
+              <Notice code={message} />
+              <div className="version">
+                <div className="meta"><span>Ma version 2 · Donc ?</span><span>{formatTime(entries[1].createdAt)}</span></div>
+                <p>{entries[1].body}</p>
+              </div>
+            </>
           )}
-          {d.lecture ? (
-            <div className="media">
-              <div className="kind"><span>Aller plus loin avec l&apos;auteur</span></div>
-              <YouTubePlayer youtubeId={d.lecture.youtubeId} title={cleanTitle(d.lecture.title)} duration={formatDuration(d.lecture.durationSeconds)} />
-              <span className="ttl">{cleanTitle(d.lecture.title)}</span>
-            </div>
-          ) : d.short ? (
-            <p className="pending">La vidéo longue de cet auteur n&apos;est pas encore identifiée.</p>
-          ) : null}
         </div>
+
+        {d.lecture ? (
+          <div className="media loin">
+            <div className="kind"><span>Aller plus loin avec l&apos;auteur</span></div>
+            <YouTubePlayer youtubeId={d.lecture.youtubeId} title={cleanTitle(d.lecture.title)} duration={formatDuration(d.lecture.durationSeconds)} />
+            <span className="ttl">{cleanTitle(d.lecture.title)}</span>
+          </div>
+        ) : d.short ? (
+          <p className="pending loin">La vidéo longue de cet auteur n&apos;est pas encore identifiée.</p>
+        ) : null}
 
         {authentic && (
           <div className="seal-slot">

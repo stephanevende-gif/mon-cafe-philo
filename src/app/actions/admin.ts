@@ -11,6 +11,7 @@ import { isDay } from "@/lib/dates";
 import { parseDuration, parseYouTubeId } from "@/lib/youtube";
 import { formatNotions, isNotion } from "@/lib/notions";
 import { portraitFromUrl } from "@/lib/portrait";
+import { cleanReadings } from "@/lib/readings";
 
 const UUID = /^[0-9a-f-]{36}$/;
 
@@ -41,6 +42,17 @@ function fail(path: string, message: string): never {
 }
 
 // ---------- fiches ----------
+
+// Les trois lectures conseillées du formulaire : une lecture incomplète est ignorée.
+function readingsFrom(fd: FormData) {
+  const list = [1, 2, 3].map((i) => ({
+    philosopher: String(fd.get(`lecture${i}_philosophe`) ?? ""),
+    book: String(fd.get(`lecture${i}_livre`) ?? ""),
+    description: String(fd.get(`lecture${i}_descriptif`) ?? ""),
+  }));
+  const clean = cleanReadings(list);
+  return clean.length ? clean : null;
+}
 
 export async function saveSheet(fd: FormData) {
   const editor = await requireEditor();
@@ -80,6 +92,7 @@ export async function saveSheet(fd: FormData) {
     synthesis,
     problem: str(fd, "probleme", 700),
     solutionQuestion: str(fd, "solution", 400),
+    readings: readingsFrom(fd),
     shortVideoId,
     lectureVideoId,
     bookId: uuid(fd, "livre"),
