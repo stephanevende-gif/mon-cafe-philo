@@ -1,4 +1,4 @@
-# Bilan n°17 : portrait au crayon (27 octobre 2026)
+# Bilan n°17 : portrait au crayon et lien « En savoir plus sur l'auteur » (27 octobre 2026)
 
 ## Ce qui a été fait
 - Le premier rendu (hachures noir et blanc) ne convenait pas. Le portrait est maintenant un **dessin au crayon rehaussé à l'encre**, sur le modèle envoyé par Stéphane :
@@ -8,6 +8,7 @@
   - bords « non finis » qui se perdent dans le blanc du papier, de façon irrégulière.
 - Exemple sur une photo libre de droits (NASA) : `captures/exemple-portrait-crayon.png`, avec la photo d'origine à gauche et le dessin à droite.
 - Le reste ne change pas : le dessin est fait automatiquement à partir de l'image de la vidéo de l'auteur, et on peut le refaire depuis Administration › Intervenants.
+- Le lien après la présentation de l'auteur s'appelle toujours « En savoir plus sur l'auteur → ». Il pointe vers la fiche auteur des Éditions M-Éditer, ou à défaut vers une page qui présente l'auteur.
 - Tous les tests passent (30 sur 30). Code poussé sur la branche `claude/project-thread-1vzhmn`.
 
 ## Limite

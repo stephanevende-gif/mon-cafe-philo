@@ -57,7 +57,7 @@ export async function drawPortrait(image: Buffer): Promise<string> {
     }
   }
 
-  const png = await sharp(out, { raw: { width: w, height: w, channels: 1 } }).linear(1.08, -10).png().toBuffer();
+  const png = await sharp(out, { raw: { width: w, height: w, channels: 1 } }).linear(1.08, -10).toColourspace("b-w").png().toBuffer();
   return `data:image/png;base64,${png.toString("base64")}`;
 }
 

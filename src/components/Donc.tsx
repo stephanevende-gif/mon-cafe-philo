@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { cleanTitle } from "@/lib/youtube";
-import { isPublisherPage } from "@/lib/authors";
 import { db } from "@/db";
 import { currentAccess, requireUser } from "@/lib/auth";
 import { formatDuration } from "@/lib/dates";
@@ -65,7 +64,7 @@ export async function Donc({ ctx }: { ctx: JourneyContext }) {
               <span className="q">{speaker.qualification}</span>
               {speaker.profileUrl && (
                 <a className="profile" href={speaker.profileUrl} target="_blank" rel="noopener noreferrer">
-                  {isPublisherPage(speaker.profileUrl) ? "Fiche auteur sur le site des Éditions M-Éditer" : "En savoir plus sur l'auteur"} →
+                  En savoir plus sur l&apos;auteur →
                 </a>
               )}
               {speaker.verifiedAt && <span className="verified">✓ Identité et qualification vérifiées</span>}
