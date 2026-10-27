@@ -13,7 +13,7 @@ import { portraitFromUrl } from "./portrait";
 export const DEFAULT_PLAYLIST = "PL2d4vA4vfs79RPBnT3PFdOjyXaWPdquGv";
 const SHORT_MAX = 180;
 const LECTURE_MIN = 180;
-const NO_REPEAT_DAYS = 60;
+const NO_REPEAT_DAYS = 120; // pas de répétition à moins de 4 mois
 const DIVERSITY_DAYS = 7;
 // Rediffusions : deux tiers de fiches anciennes, un tiers de fiches récentes (Short publié depuis moins d'un an).
 const RECENT_DAYS = 365;

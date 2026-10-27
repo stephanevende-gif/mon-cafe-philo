@@ -117,7 +117,7 @@ describe("programmation quotidienne", () => {
       const [s] = await ctx.db.insert(sheets).values({ day, theme, question: `Q ${theme}`, synthesis: "s", shortVideoId: v.id, status: "validee" }).returning();
       return s;
     };
-    const old = await mk("ancienAAA01", sp1.id, "2026-07-01", "liberté");
+    const old = await mk("ancienAAA01", sp1.id, "2026-06-01", "liberté");
     await mk("recentBBB02", sp1.id, "2026-10-20", "vérité");
     await mk("recentCCC03", sp2.id, "2026-10-25", "bonheur");
 
@@ -126,7 +126,7 @@ describe("programmation quotidienne", () => {
     expect(r.action).toBe("rediffusion");
     expect(r.movedToQueue).toBeDefined();
     const replay = await ctx.db.query.sheets.findFirst({ where: eq(sheets.day, "2026-10-27") });
-    // Seule la fiche de juillet n'a pas été publiée dans les 60 derniers jours.
+    // Seule la fiche de juin n'a pas été publiée dans les 4 derniers mois.
     expect(replay).toMatchObject({ status: "validee", replayOf: old.id, question: "Q liberté" });
 
     expect((await planDay(ctx.db, "2026-10-27")).action).toBe("deja_prete");
