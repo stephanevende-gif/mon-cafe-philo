@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { authorBio, authorLink } from "@/lib/authors";
+import { authorBio, authorLink, isPublisherPage, publisherPage } from "@/lib/authors";
 
 describe("Présentation de l'auteur", () => {
   it("reprend telle quelle la présentation de la description YouTube", () => {
@@ -23,5 +23,18 @@ describe("Présentation de l'auteur", () => {
 
   it("ignore la présentation d'une autre personne", () => {
     expect(authorBio("🎓 Anne Lepage est étudiante en CPGE.", "Maxence Körner")).toBeNull();
+  });
+});
+
+describe("Fiche auteur M-Éditer", () => {
+  it("retrouve la fiche auteur dont l'adresse porte le nom, en https", () => {
+    const ds = [
+      "En savoir plus sur l'auteur André Guigot : https://m-editer.izibookstore.com/auteur/35/andre-guigot",
+      "🎓 http://m-editer.izibookstore.com/auteur/71/Andre%20STANGUENNEC",
+    ];
+    expect(publisherPage(ds, "André Stanguennec")).toBe("https://m-editer.izibookstore.com/auteur/71/Andre%20STANGUENNEC");
+    expect(publisherPage(ds, "André Guigot")).toBe("https://m-editer.izibookstore.com/auteur/35/andre-guigot");
+    expect(publisherPage(ds, "David Christoffel")).toBeNull();
+    expect(isPublisherPage("https://m-editer.izibookstore.com/auteur/12/jean-luc-nativelle")).toBe(true);
   });
 });

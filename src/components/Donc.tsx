@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { cleanTitle } from "@/lib/youtube";
+import { isPublisherPage } from "@/lib/authors";
 import { db } from "@/db";
 import { currentAccess, requireUser } from "@/lib/auth";
 import { formatDuration } from "@/lib/dates";
@@ -52,12 +53,21 @@ export async function Donc({ ctx }: { ctx: JourneyContext }) {
 
         {speaker && (
           <div className="speaker">
-            <div className="band" aria-hidden={!speaker.photoUrl}>
-              {speaker.photoUrl ? <img src={speaker.photoUrl} alt={`Portrait de ${speaker.fullName}`} /> : <span>{speaker.fullName.charAt(0)}</span>}
+            <div className={`band${speaker.portrait ? " drawn" : ""}`} aria-hidden={!(speaker.portrait ?? speaker.photoUrl)}>
+              {speaker.portrait ?? speaker.photoUrl ? (
+                <img src={(speaker.portrait ?? speaker.photoUrl)!} alt={`Portrait dessiné de ${speaker.fullName}`} />
+              ) : (
+                <span>{speaker.fullName.charAt(0)}</span>
+              )}
             </div>
             <div className="who">
               <span className="nm">{speaker.fullName}</span>
               <span className="q">{speaker.qualification}</span>
+              {speaker.profileUrl && (
+                <a className="profile" href={speaker.profileUrl} target="_blank" rel="noopener noreferrer">
+                  {isPublisherPage(speaker.profileUrl) ? "Fiche auteur sur le site des Éditions M-Éditer" : "En savoir plus sur l'auteur"} →
+                </a>
+              )}
               {speaker.verifiedAt && <span className="verified">✓ Identité et qualification vérifiées</span>}
             </div>
           </div>

@@ -10,6 +10,7 @@ import { requireAdmin, requireEditor } from "@/lib/auth";
 import { isDay } from "@/lib/dates";
 import { parseDuration, parseYouTubeId } from "@/lib/youtube";
 import { formatNotions, isNotion } from "@/lib/notions";
+import { drawPortraitFromUrl } from "@/lib/portrait";
 
 const UUID = /^[0-9a-f-]{36}$/;
 
@@ -116,17 +117,22 @@ export async function saveSpeaker(fd: FormData) {
   const editor = await requireEditor();
   const id = uuid(fd, "id");
   const fullName = str(fd, "nom", 120);
-  const qualification = str(fd, "qualification", 300);
+  const qualification = str(fd, "qualification", 1000);
   if (!fullName || !qualification) fail("/admin/intervenants", "Le nom et la qualification sont obligatoires.");
   const verified = fd.get("verifie") === "on";
   const qualificationSource = httpsUrl(str(fd, "source", 500));
   if (verified && !qualificationSource) fail("/admin/intervenants", "Indiquez la source qui permet de vérifier la qualification.");
   const previous = id ? await db.query.speakers.findFirst({ where: eq(speakers.id, id) }) : null;
+  const photoUrl = httpsUrl(str(fd, "photo", 500));
+  // Le portrait dessiné est refait quand l'image de départ change (ou à la demande).
+  const redraw = photoUrl && (photoUrl !== previous?.photoUrl || !previous?.portrait || fd.get("redessiner") === "on");
   const values = {
     fullName,
     qualification,
     qualificationSource,
-    photoUrl: httpsUrl(str(fd, "photo", 500)),
+    photoUrl,
+    portrait: !photoUrl ? null : redraw ? await drawPortraitFromUrl(photoUrl) : previous?.portrait ?? null,
+    profileUrl: httpsUrl(str(fd, "presentation", 500)?.replace(/^http:\/\//, "https://") ?? null),
     verifiedAt: verified ? previous?.verifiedAt ?? new Date() : null,
     verifiedBy: verified ? previous?.verifiedBy ?? editor.id : null,
   };

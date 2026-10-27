@@ -29,3 +29,35 @@ export function authorLink(description: string | null | undefined): string | nul
   const m = description.match(/En savoir plus sur l.auteur[^\n]*?(https?:\/\/\S+)/i);
   return m ? m[1] : null;
 }
+
+const PUBLISHER_AUTHOR_RE = /https?:\/\/m-editer\.izibookstore\.com\/auteur\/[^\s)"'<>]+/gi;
+
+export function isPublisherPage(url: string): boolean {
+  return /^https?:\/\/m-editer\.izibookstore\.com\/auteur\//i.test(url);
+}
+
+const fold = (s: string) =>
+  decodeURIComponent(s)
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z]/g, "");
+
+// Fiche auteur des Éditions M-Éditer citée dans l'une des descriptions, dont l'adresse porte le nom de l'auteur.
+export function publisherPage(descriptions: (string | null | undefined)[], name: string): string | null {
+  const wanted = fold(name);
+  if (!wanted) return null;
+  for (const d of descriptions) {
+    for (const url of d?.match(PUBLISHER_AUTHOR_RE) ?? []) {
+      const slug = url.split("/").pop() ?? "";
+      let folded = "";
+      try {
+        folded = fold(slug);
+      } catch {
+        continue;
+      }
+      if (folded === wanted) return url.replace(/^http:\/\//i, "https://");
+    }
+  }
+  return null;
+}

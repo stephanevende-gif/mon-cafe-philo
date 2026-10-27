@@ -36,9 +36,12 @@ export default async function Page({ searchParams }: Props) {
         <h2>{edit ? `Modifier : ${edit.fullName}` : "Ajouter un intervenant"}</h2>
         {edit && <input type="hidden" name="id" value={edit.id} />}
         <label>Nom complet<input type="text" name="nom" id="nom" required defaultValue={edit?.fullName ?? ""} /></label>
-        <label>Fonction ou qualification<input type="text" name="qualification" id="qualification" required defaultValue={edit?.qualification ?? ""} placeholder="Professeur de philosophie, université de…" /></label>
+        <label>Présentation<textarea name="qualification" id="qualification" required maxLength={1000} defaultValue={edit?.qualification ?? ""} placeholder="Professeur de philosophie, université de…" /></label>
+        <label>Lien de présentation (fiche auteur M-Éditer, sinon une page qui présente l&apos;auteur)<input type="url" name="presentation" id="presentation" defaultValue={edit?.profileUrl ?? ""} /></label>
         <label>Source de vérification (lien https)<input type="url" name="source" id="source" defaultValue={edit?.qualificationSource ?? ""} /></label>
-        <label>Portrait (lien https, facultatif)<input type="url" name="photo" id="photo" defaultValue={edit?.photoUrl ?? ""} /></label>
+        <label>Image de départ du portrait (lien https, facultatif)<input type="url" name="photo" id="photo" defaultValue={edit?.photoUrl ?? ""} /><span className="hint">Elle est transformée en dessin noir et blanc. Par défaut : l&apos;image de la vidéo de l&apos;auteur sur la chaîne.</span></label>
+        {edit?.portrait && <img src={edit.portrait} alt={`Portrait dessiné de ${edit.fullName}`} width={140} height={140} style={{ border: "1px solid var(--filet)" }} />}
+        {edit?.photoUrl && <label className="check"><input type="checkbox" name="redessiner" id="redessiner" /><span>Refaire le dessin à partir de cette image.</span></label>}
         <label className="check"><input type="checkbox" name="verifie" id="verifie" defaultChecked={!!edit?.verifiedAt} /><span>J&apos;ai vérifié l&apos;identité et la qualification de cette personne.</span></label>
         <button className="btn primary" type="submit">Enregistrer</button>
       </form>
