@@ -165,7 +165,7 @@ describe("brouillons IA pour les fiches déjà importées", () => {
     expect((await draftWithAi(ctx.db, propose, { sheetIds: [todo.id], drawPortrait: async () => "data:image/png;base64,dessin" })).drafted).toBe(1);
     const short = await ctx.db.query.videos.findFirst({ where: eq(videos.id, sv.id) });
     const speaker = await ctx.db.query.speakers.findFirst({ where: eq(speakers.id, short!.speakerId!) });
-    expect(speaker).toMatchObject({ fullName: "Marie Curieuse", qualification: "Marie Curieuse est professeure de philosophie à Nantes.", photoUrl: "https://i.ytimg.com/vi/longueAUTE1/hqdefault.jpg", portrait: "data:image/png;base64,dessin", verifiedAt: null });
+    expect(speaker).toMatchObject({ fullName: "Marie Curieuse", qualification: "Marie Curieuse est professeure de philosophie à Nantes.", photoUrl: "https://i.ytimg.com/vi/courtAUTEU1/maxresdefault.jpg", portrait: "data:image/png;base64,dessin", verifiedAt: null });
     expect((await ctx.db.query.videos.findFirst({ where: eq(videos.id, lv.id) }))?.speakerId).toBe(speaker!.id);
   });
 });

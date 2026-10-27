@@ -154,7 +154,7 @@ async function doSync(db: Db, opts: SyncOptions): Promise<SyncReport> {
       await attachAuthor(db, proposal.author, [
         { id: short.id, youtubeId: s.id, description: s.description },
         ...(lectureId && lecture ? [{ id: lectureId, youtubeId: lecture.id, description: lecture.description }] : []),
-      ], (url) => drawPortraitFromUrl(url, fetchImpl));
+      ], (url, o) => drawPortraitFromUrl(url, fetchImpl, o));
     }
 
     // J+1, s'il est encore à venir et libre ; sinon file éditoriale.
@@ -306,13 +306,13 @@ const BIO_TODO = "Présentation à compléter : la description YouTube ne prése
 // Rattache l'auteur nommé dans la description aux vidéos qui n'en ont pas encore.
 // Sa présentation est reprise telle quelle de la description du Short ou de la vidéo longue ;
 // il reste « non vérifié » tant qu'un membre de l'équipe ne l'a pas contrôlé.
-type Draw = (url: string) => Promise<string | null>;
+type Draw = (url: string, opts?: { short?: boolean }) => Promise<string | null>;
 
 export async function attachAuthor(
   db: Db,
   name: string,
   vids: { id: string; youtubeId: string; description: string | null }[],
-  draw: Draw = (url) => drawPortraitFromUrl(url),
+  draw: Draw = (url, o) => drawPortraitFromUrl(url, fetch, o),
 ) {
   const fullName = name.trim().slice(0, 120);
   if (!fullName) return;
@@ -327,12 +327,14 @@ export async function attachAuthor(
   let speaker = await db.query.speakers.findFirst({ where: sql`lower(${speakers.fullName}) = lower(${fullName})` });
   if (!speaker) {
     // Portrait : l'image de la vidéo longue (ou du Short) de la chaîne, transformée en dessin ; l'équipe peut la remplacer.
-    const pictured = vids[vids.length - 1];
+    // À défaut de photo sur la fiche auteur : l'image du Short, recadrée sur le visage
+    // (les vignettes des vidéos longues portent souvent un titre en surimpression).
     const profileUrl = await findProfile(db, fullName, vids);
-    const photoUrl = (await profilePhoto(profileUrl, fullName)) ?? `https://i.ytimg.com/vi/${pictured.youtubeId}/hqdefault.jpg`;
+    const fromProfile = await profilePhoto(profileUrl, fullName);
+    const photoUrl = fromProfile ?? `https://i.ytimg.com/vi/${vids[0].youtubeId}/maxresdefault.jpg`;
     [speaker] = await db
       .insert(speakers)
-      .values({ fullName, qualification, qualificationSource, photoUrl, portrait: await draw(photoUrl), profileUrl })
+      .values({ fullName, qualification, qualificationSource, photoUrl, portrait: await draw(photoUrl, { short: !fromProfile }), profileUrl })
       .returning();
   }
   if (!speaker.verifiedAt && speaker.qualification === BIO_TODO && withBio) {

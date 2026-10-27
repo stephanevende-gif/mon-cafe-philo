@@ -72,6 +72,10 @@ export function photoFromProfilePage(html: string, pageUrl: string, name: string
       return null;
     }
   };
+  // Photo d'auteur explicitement marquée comme telle (boutique M-Éditer : class="author_picture").
+  const tagged = (html.match(/<img\b[^>]*>/gi) ?? []).find((t) => /\bauthor_picture\b/i.test(t));
+  const taggedSrc = tagged?.match(/\bsrc=["']([^"']+)["']/i)?.[1];
+  if (taggedSrc) return abs(taggedSrc);
   const og =
     html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i) ??
     html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image["']/i);

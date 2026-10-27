@@ -50,4 +50,8 @@ describe("Photo de la fiche auteur", () => {
     expect(photoFromProfilePage(html, page, "Jean-Luc Nativelle")).toBe("https://m-editer.izibookstore.com/media/a12.jpg");
     expect(photoFromProfilePage(`<img src="/img/logo.png">`, page, "Jean-Luc Nativelle")).toBeNull();
   });
+  it("préfère la photo marquée « author_picture » au logo de partage", () => {
+    const html = `<meta property="og:image" content="/logo-m-editer.png"><img class="author_picture img-circle" alt="Jean-Luc NATIVELLE" src="https://m-editer.izibookstore.com/system/author_pictures/data/008/990/499/regular/Nativelle_Jean-Luc.jpg" />`;
+    expect(photoFromProfilePage(html, page, "Jean-Luc Nativelle")).toBe("https://m-editer.izibookstore.com/system/author_pictures/data/008/990/499/regular/Nativelle_Jean-Luc.jpg");
+  });
 });

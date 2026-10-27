@@ -20,14 +20,17 @@ async function main() {
 
   const report: string[] = [];
   // Auteurs sans lien ou sans portrait, ou dont le portrait part encore d'une image de vidéo.
-  const todo = (await db.select().from(speakers)).filter((sp) => !sp.profileUrl || !sp.portrait || sp.photoUrl?.includes("i.ytimg.com"));
+  const todo = (await db.select().from(speakers)).filter((sp) => !sp.profileUrl || !sp.portrait || !sp.photoUrl || sp.photoUrl.includes("i.ytimg.com"));
   for (const sp of todo) {
-    const own = await db.select({ description: videos.description }).from(videos).where(eq(videos.speakerId, sp.id));
+    const own = await db.select({ description: videos.description, youtubeId: videos.youtubeId, kind: videos.kind }).from(videos).where(eq(videos.speakerId, sp.id));
     const profileUrl = sp.profileUrl ?? (await findProfile(db, sp.fullName, own));
-    // Priorité à la photo de la fiche auteur M-Éditer ; sinon l'image de la vidéo.
-    const fromProfile = !sp.photoUrl || sp.photoUrl.includes("i.ytimg.com") ? await profilePhoto(profileUrl, sp.fullName) : null;
-    const photoUrl = fromProfile ?? sp.photoUrl;
-    const portrait = fromProfile || !sp.portrait ? (photoUrl ? await drawPortraitFromUrl(photoUrl) : null) : sp.portrait;
+    const fromVideo = !sp.photoUrl || sp.photoUrl.includes("i.ytimg.com");
+    // Priorité à la photo de la fiche auteur M-Éditer ; sinon l'image d'un Short, recadrée sur le visage.
+    const fromProfile = fromVideo ? await profilePhoto(profileUrl, sp.fullName) : null;
+    const short = own.find((v) => v.kind === "short");
+    const photoUrl = fromProfile ?? (fromVideo && short ? `https://i.ytimg.com/vi/${short.youtubeId}/maxresdefault.jpg` : sp.photoUrl);
+    const redraw = fromVideo || !sp.portrait;
+    const portrait = redraw && photoUrl ? await drawPortraitFromUrl(photoUrl, fetch, { short: !fromProfile && fromVideo }) : sp.portrait;
     await db.update(speakers).set({ profileUrl, photoUrl, portrait: portrait ?? sp.portrait }).where(eq(speakers.id, sp.id));
     report.push(`${sp.fullName} : lien ${profileUrl ?? "à trouver"} ; photo ${fromProfile ? "de la fiche auteur" : "de la vidéo"} ; portrait ${portrait ? "dessiné" : "non dessiné (image inaccessible)"}`);
   }

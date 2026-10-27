@@ -65,11 +65,23 @@ export async function drawPortrait(image: Buffer): Promise<string> {
 }
 
 // Télécharge l'image (vignette YouTube) et la dessine ; ne renvoie rien en cas d'échec.
-export async function drawPortraitFromUrl(url: string, fetchImpl: typeof fetch = fetch): Promise<string | null> {
+// Image d'un Short : la vidéo verticale occupe la bande centrale ; on garde le haut de cette bande (le visage),
+// sous le bandeau de titre et au-dessus des sous-titres.
+export async function shortFace(image: Buffer): Promise<Buffer> {
+  const { width = 0, height = 0 } = await sharp(image).metadata();
+  const strip = Math.round((height * 9) / 16);
+  const side = Math.round(strip * 0.82);
+  return sharp(image)
+    .extract({ left: Math.round((width - side) / 2), top: Math.round(height * 0.12), width: side, height: Math.min(side, height - Math.round(height * 0.12)) })
+    .toBuffer();
+}
+
+export async function drawPortraitFromUrl(url: string, fetchImpl: typeof fetch = fetch, opts: { short?: boolean } = {}): Promise<string | null> {
   try {
     const res = await fetchImpl(url);
     if (!res.ok) return null;
-    return await drawPortrait(Buffer.from(await res.arrayBuffer()));
+    const image = Buffer.from(await res.arrayBuffer());
+    return await drawPortrait(opts.short ? await shortFace(image) : image);
   } catch {
     return null;
   }
