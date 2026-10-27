@@ -28,6 +28,8 @@ export async function JeSuis({ ctx, message }: { ctx: JourneyContext; message?: 
   }
   const entries = await listEntries(db, user.id, ctx.sheet.id);
   const shown = entries.length > 2 ? [entries[0], entries[entries.length - 1]] : entries;
+  // À partir de la version 3, le lecteur est invité à proposer sa solution au problème posé par la question.
+  const helpSolution = entries.length >= 2 && !!ctx.sheet.solutionQuestion;
 
   return (
     <main className="page">
@@ -60,13 +62,22 @@ export async function JeSuis({ ctx, message }: { ctx: JourneyContext; message?: 
               </div>
             </div>
           )}
+          {helpSolution && (
+            <section className="probleme stack" aria-labelledby="probleme-titre">
+              <span className="step-label">Pour aller plus loin</span>
+              <h2 id="probleme-titre" className="invite">Quel est alors le problème à surmonter ?</h2>
+              {ctx.sheet.problem && <p>{ctx.sheet.problem}</p>}
+              <p className="solution">{ctx.sheet.solutionQuestion}</p>
+              <p className="muted">Et vous, que proposeriez-vous ? La solution vous appartient.</p>
+            </section>
+          )}
           <form action={saveReflection} className="stack">
             <input type="hidden" name="fiche" value={ctx.sheet.id} />
             <input type="hidden" name="etape" value={entries.length === 0 ? "je_pense" : "je_suis"} />
             <input type="hidden" name="retour" value={here} />
             <label>
-              {entries.length === 0 ? "Ma première réflexion" : `Version ${entries.length + 1}`}
-              <textarea name="texte" id="texte" maxLength={8000} placeholder="Nuancer, compléter, objecter à ma propre pensée…" style={{ minHeight: 130 }} />
+              {entries.length === 0 ? "Ma première réflexion" : helpSolution ? `Version ${entries.length + 1} : ma proposition` : `Version ${entries.length + 1}`}
+              <textarea name="texte" id="texte" maxLength={8000} placeholder={helpSolution ? "La solution que je propose…" : "Nuancer, compléter, objecter à ma propre pensée…"} style={{ minHeight: 130 }} />
               <span className="hint">Les versions précédentes restent intactes.</span>
             </label>
             <div className="row"><button className="btn primary" type="submit">Enregistrer une nouvelle version</button></div>

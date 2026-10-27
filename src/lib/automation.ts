@@ -194,7 +194,7 @@ async function doSync(db: Db, opts: SyncOptions): Promise<SyncReport> {
   return report;
 }
 
-const AI_NOTE = "Titre, notions, question et approche de l'auteur proposés par un outil d'IA à partir de la description du Short : à vérifier avant validation.";
+const AI_NOTE = "Titre, notions, question, approche de l'auteur et problème à surmonter proposés par un outil d'IA à partir de la description du Short : à vérifier avant validation.";
 const TODO_NOTE = "Thème, question et synthèse à rédiger.";
 
 function proposalNotes(p: SheetProposal | null): string[] {
@@ -212,6 +212,8 @@ function proposalFields(p: SheetProposal | null, title: string) {
     theme: (p?.notions?.length ? formatNotions(p.notions) : "") || "à définir",
     question: p?.question?.slice(0, 300) || `[Question à rédiger] ${cleanTitle(title)}`.slice(0, 300),
     synthesis: p?.synthesis?.slice(0, 700) ?? null,
+    problem: p?.problem?.slice(0, 700) || null,
+    solutionQuestion: p?.solutionQuestion?.slice(0, 400) || null,
   };
 }
 
@@ -456,6 +458,8 @@ async function doPlan(db: Db, day: string): Promise<PlanResult> {
       theme: pick.theme,
       question: pick.question,
       synthesis: pick.synthesis,
+      problem: pick.problem,
+      solutionQuestion: pick.solutionQuestion,
       shortVideoId: pick.shortVideoId,
       lectureVideoId: pick.lectureVideoId,
       bookId: pick.bookId,

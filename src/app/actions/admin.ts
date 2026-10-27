@@ -78,6 +78,8 @@ export async function saveSheet(fd: FormData) {
     theme,
     question,
     synthesis,
+    problem: str(fd, "probleme", 700),
+    solutionQuestion: str(fd, "solution", 400),
     shortVideoId,
     lectureVideoId,
     bookId: uuid(fd, "livre"),

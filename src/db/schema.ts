@@ -136,6 +136,10 @@ export const sheets = pgTable(
     theme: text("theme").notNull(),
     question: text("question").notNull(),
     synthesis: text("synthesis"),
+    // Page « Je suis » : le problème que pose l'alternative de la question, puis la question de solution
+    // soumise au lecteur pour sa version 3 (« Quelle solution adopter pour… ? »).
+    problem: text("problem"),
+    solutionQuestion: text("solution_question"),
     shortVideoId: uuid("short_video_id").references(() => videos.id, { onDelete: "set null" }),
     lectureVideoId: uuid("lecture_video_id").references(() => videos.id, { onDelete: "set null" }),
     bookId: uuid("book_id").references(() => books.id, { onDelete: "set null" }),
