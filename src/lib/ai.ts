@@ -36,7 +36,8 @@ const Proposal = z.object({
 
 export type SheetProposal = z.infer<typeof Proposal>;
 
-const PROBLEM_RULES = `Le problème à surmonter et la question de solution aident le lecteur à rédiger sa propre réponse, après avoir réfléchi seul puis écouté l'auteur. Ils ne donnent jamais la solution : c'est au lecteur de la proposer.
+const PROBLEM_RULES = `Principe des Éditions M-Éditer : on ne philosophe pas vraiment tant que l'on ne pose pas un problème, qu'on ne l'instruit pas et qu'on ne s'y confronte pas pour le surmonter, avec et pour les autres. Les solutions évidentes et les réponses sans analyse sont sources d'erreur, et même de faute. Le problème doit donc être réel : aucune des deux branches ne doit l'emporter d'évidence.
+Le problème à surmonter et la question de solution aident le lecteur à rédiger sa propre réponse, après avoir réfléchi seul puis écouté l'auteur. Ils ne donnent jamais la solution : c'est au lecteur de la proposer.
 - Le problème (champ problem) explique en deux phrases pourquoi aucune des deux branches de l'alternative ne suffit : ce que l'on risque si l'on choisit la première, ce que l'on risque si l'on choisit la seconde. Il reprend les termes de la question.
 - La question de solution (champ solutionQuestion) commence par « Quelle solution adopter pour à la fois… » et demande comment garder ce que chaque branche a de juste sans courir le risque qu'elle comporte.
 Exemple pour la question « Confier nos jugements aux machines, est-ce corriger nos erreurs ou renoncer à notre sagesse ? » :

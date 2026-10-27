@@ -66,6 +66,10 @@ export async function JeSuis({ ctx, message }: { ctx: JourneyContext; message?: 
             <section className="probleme stack" aria-labelledby="probleme-titre">
               <span className="step-label">Pour aller plus loin</span>
               <h2 id="probleme-titre" className="invite">Quel est alors le problème à surmonter ?</h2>
+              <p className="principe">
+                On ne philosophe pas vraiment tant que l&apos;on ne pose pas un problème, qu&apos;on ne l&apos;instruit pas et qu&apos;on ne s&apos;y confronte pas pour le
+                surmonter, avec et pour les autres. Les solutions évidentes et les réponses sans analyse sont sources d&apos;erreur, et même de faute.
+              </p>
               {ctx.sheet.problem && <p>{ctx.sheet.problem}</p>}
               <p className="solution">{ctx.sheet.solutionQuestion}</p>
               <p className="muted">Et vous, que proposeriez-vous ? La solution vous appartient.</p>

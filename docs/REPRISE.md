@@ -14,6 +14,10 @@ Ce fichier permet à toute personne (ou à une nouvelle session de Claude) de re
 2. Après chaque livraison, joindre un bilan (fait / reste à faire) dans une archive zip téléchargeable contenant aussi le code, pour pouvoir reprendre en cas de coupure.
 3. Ne jamais inventer d'intervenant, de livre, de citation ni de lien vidéo.
 
+## Principe philosophique de l'application
+On ne philosophe pas vraiment tant que l'on ne pose pas un problème, qu'on ne l'instruit pas et qu'on ne s'y confronte pas pour le surmonter, avec et pour les autres. Les solutions évidentes et les réponses sans analyse sont sources d'erreur, et même de faute.
+C'est pourquoi la page « Je suis » pose, avant la version 3, le problème à surmonter propre à chaque question et demande au lecteur sa solution (voir `src/components/JeSuis.tsx` et `src/lib/ai.ts`).
+
 ## Où trouver les choses
 - Code : dépôt GitHub `stephanevende-gif/mon-cafe-philo`, branche `main`.
 - Maquettes validées : `docs/maquettes/` (phase 1 et étape 3).
