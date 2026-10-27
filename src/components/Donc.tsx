@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { cleanTitle } from "@/lib/youtube";
 import { db } from "@/db";
 import { currentAccess, requireUser } from "@/lib/auth";
 import { formatDuration } from "@/lib/dates";
@@ -24,6 +25,8 @@ export async function Donc({ ctx }: { ctx: JourneyContext }) {
   const d = await getSheetDetails(db, ctx.sheet);
   const speaker = d.short?.speaker ?? d.lecture?.speaker ?? null;
   const authentic = authenticityConfirmed(d);
+  // La photo de l'auteur, gardée dans l'application ; à défaut, l'image YouTube d'origine (seule image externe autorisée par le site).
+  const picture = speaker?.portrait ?? (speaker?.photoUrl?.startsWith("https://i.ytimg.com/") ? speaker.photoUrl : null);
 
   return (
     <main className="page">
@@ -35,28 +38,37 @@ export async function Donc({ ctx }: { ctx: JourneyContext }) {
         </div>
 
         <div className="synth">
-          <span className="eyebrow">Une piste en deux phrases</span>
+          <span className="eyebrow">Approche de la question par {speaker ? speaker.fullName : "l'auteur"}</span>
           {d.sheet.synthesis ? (
             <>
               <p>{d.sheet.synthesis}</p>
               <small>
-                Synthèse éditoriale des Éditions M-Éditer{speaker ? ", fidèle à l'intervention ci-dessous" : ""}. Ce n&apos;est pas une citation
-                de l&apos;intervenant.
+                Approche de l&apos;auteur reformulée par les Éditions M-Éditer{speaker ? ", fidèle à l'intervention ci-dessous" : ""}. Ce n&apos;est pas une
+                citation de l&apos;intervenant.
               </small>
             </>
           ) : (
-            <p className="pending">La synthèse de cette question est en cours de rédaction.</p>
+            <p className="pending">L&apos;approche de la question par l&apos;auteur est en cours de rédaction.</p>
           )}
         </div>
 
         {speaker && (
           <div className="speaker">
-            <div className="band" aria-hidden={!speaker.photoUrl}>
-              {speaker.photoUrl ? <img src={speaker.photoUrl} alt={`Portrait de ${speaker.fullName}`} /> : <span>{speaker.fullName.charAt(0)}</span>}
+            <div className={`band${speaker.portrait ? " photo" : ""}`} aria-hidden={!picture}>
+              {picture ? (
+                <img src={picture} alt={`Portrait de ${speaker.fullName}`} />
+              ) : (
+                <span>{speaker.fullName.charAt(0)}</span>
+              )}
             </div>
             <div className="who">
               <span className="nm">{speaker.fullName}</span>
               <span className="q">{speaker.qualification}</span>
+              {speaker.profileUrl && (
+                <a className="profile" href={speaker.profileUrl} target="_blank" rel="noopener noreferrer">
+                  En savoir plus sur l&apos;auteur →
+                </a>
+              )}
               {speaker.verifiedAt && <span className="verified">✓ Identité et qualification vérifiées</span>}
             </div>
           </div>
@@ -65,19 +77,19 @@ export async function Donc({ ctx }: { ctx: JourneyContext }) {
         <div className="medias">
           {d.short && (
             <div className="media">
-              <div className="kind"><span>Short</span><span>&lt; 3 min</span></div>
-              <YouTubePlayer youtubeId={d.short.youtubeId} title={d.short.title} vertical duration={formatDuration(d.short.durationSeconds)} />
-              <span className="ttl">{d.short.title}</span>
+              <div className="kind"><span>Écouter l&apos;auteur sur cette question</span></div>
+              <YouTubePlayer youtubeId={d.short.youtubeId} title={cleanTitle(d.short.title)} vertical duration={formatDuration(d.short.durationSeconds)} />
+              <span className="ttl">{cleanTitle(d.short.title)}</span>
             </div>
           )}
           {d.lecture ? (
             <div className="media">
-              <div className="kind"><span>Conférence</span><span>&gt; 15 min</span></div>
-              <YouTubePlayer youtubeId={d.lecture.youtubeId} title={d.lecture.title} duration={formatDuration(d.lecture.durationSeconds)} />
-              <span className="ttl">{d.lecture.title}</span>
+              <div className="kind"><span>Aller plus loin avec l&apos;auteur</span></div>
+              <YouTubePlayer youtubeId={d.lecture.youtubeId} title={cleanTitle(d.lecture.title)} duration={formatDuration(d.lecture.durationSeconds)} />
+              <span className="ttl">{cleanTitle(d.lecture.title)}</span>
             </div>
           ) : d.short ? (
-            <p className="pending">La conférence longue de cet intervenant n&apos;est pas encore identifiée.</p>
+            <p className="pending">La vidéo longue de cet auteur n&apos;est pas encore identifiée.</p>
           ) : null}
         </div>
 

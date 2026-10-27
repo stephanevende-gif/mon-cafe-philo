@@ -15,6 +15,20 @@
       "when": 1793043963874,
       "tag": "0001_automatisation_youtube",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793057655342,
+      "tag": "0002_titre_fiche",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793083969771,
+      "tag": "0003_portrait_et_lien_auteur",
+      "breakpoints": true
     }
   ]
 }

@@ -1,15 +1,23 @@
-import { and, desc, eq, gte, inArray, isNotNull, isNull, lt } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNotNull, isNull, lt, ne, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import type { Db } from "@/db";
-import { sheets, syncRuns, videos } from "@/db/schema";
+import { sheets, speakers, syncRuns, videos } from "@/db/schema";
 import { addDays, parisDay } from "./dates";
 import { getVideos, linkedVideoIds, listPlaylist, type Fetch } from "./youtube-api";
 import type { SheetProposal } from "./ai";
+import { cleanTitle } from "./youtube";
+import { formatNotions } from "./notions";
+import { authorBio, authorLink, isPublisherPage, photoFromProfilePage, bioFromProfilePage, publisherPage } from "./authors";
+import { portraitFromUrl } from "./portrait";
 
 export const DEFAULT_PLAYLIST = "PL2d4vA4vfs79RPBnT3PFdOjyXaWPdquGv";
 const SHORT_MAX = 180;
-const LECTURE_MIN = 900;
-const NO_REPEAT_DAYS = 60;
+const LECTURE_MIN = 180;
+const NO_REPEAT_DAYS = 120; // pas de répétition à moins de 4 mois
 const DIVERSITY_DAYS = 7;
+// Rediffusions : deux tiers de fiches anciennes, un tiers de fiches récentes (Short publié depuis moins d'un an).
+const RECENT_DAYS = 365;
+const RECENT_SHARE = 1 / 3;
 
 export interface SyncOptions {
   apiKey: string;
@@ -80,7 +88,7 @@ async function doSync(db: Db, opts: SyncOptions): Promise<SyncReport> {
     return false;
   });
 
-  // Conférences longues : seulement celles citées dans la description, de la même chaîne, de plus de 15 minutes.
+  // Conférences longues : seulement celles citées dans la description, de la même chaîne, de plus de 3 minutes (conférence complète ou extrait).
   const candidates = [...new Set(shorts.flatMap((s) => linkedVideoIds(s.description, s.id)))];
   const linked = new Map((candidates.length ? await getVideos(fetchImpl, opts.apiKey, candidates) : []).map((v) => [v.id, v]));
 
@@ -145,6 +153,13 @@ async function doSync(db: Db, opts: SyncOptions): Promise<SyncReport> {
       }
     }
 
+    if (proposal?.author) {
+      await attachAuthor(db, proposal.author, [
+        { id: short.id, youtubeId: s.id, description: s.description },
+        ...(lectureId && lecture ? [{ id: lectureId, youtubeId: lecture.id, description: lecture.description }] : []),
+      ], (url, o) => portraitFromUrl(url, fetchImpl, o));
+    }
+
     // J+1, s'il est encore à venir et libre ; sinon file éditoriale.
     let day: string | null = null;
     if (s.publishedAt && latestByDay.get(parisDay(s.publishedAt)) === s.id) {
@@ -153,17 +168,14 @@ async function doSync(db: Db, opts: SyncOptions): Promise<SyncReport> {
     }
 
     const notes = [
-      proposal ? "Thème, question et synthèse proposés par un outil d'IA à partir de la description du Short : à vérifier avant validation." : "Thème, question et synthèse à rédiger.",
-      proposal?.missing ? `Informations manquantes signalées : ${proposal.missing}` : null,
-      lecture ? null : "Aucune conférence longue de la chaîne n'est citée dans la description : à rechercher.",
+      ...proposalNotes(proposal),
+      lecture ? null : "Aucune conférence de la chaîne n'est citée dans la description : à rechercher.",
       "Intervenant à identifier et à vérifier.",
     ].filter(Boolean);
 
     await db.insert(sheets).values({
       day,
-      theme: proposal?.theme?.toLowerCase().slice(0, 80) || "à définir",
-      question: proposal?.question?.slice(0, 300) || `[Question à rédiger] ${s.title}`.slice(0, 300),
-      synthesis: proposal?.synthesis?.slice(0, 700) ?? null,
+      ...proposalFields(proposal, s.title),
       shortVideoId: short.id,
       lectureVideoId: lectureId,
       status: "a_verifier",
@@ -180,6 +192,167 @@ async function doSync(db: Db, opts: SyncOptions): Promise<SyncReport> {
     else report.queued++;
   }
   return report;
+}
+
+const AI_NOTE = "Titre, notions, question et approche de l'auteur proposés par un outil d'IA à partir de la description du Short : à vérifier avant validation.";
+const TODO_NOTE = "Thème, question et synthèse à rédiger.";
+
+function proposalNotes(p: SheetProposal | null): string[] {
+  if (!p) return [TODO_NOTE];
+  return [
+    AI_NOTE,
+    ...(p.author ? [`Auteur d'après la description YouTube : ${p.author} (à vérifier).`] : []),
+    ...(p.missing ? [`Informations manquantes signalées : ${p.missing}`] : []),
+  ];
+}
+
+function proposalFields(p: SheetProposal | null, title: string) {
+  return {
+    title: p?.title?.slice(0, 200) || null,
+    theme: (p?.notions?.length ? formatNotions(p.notions) : "") || "à définir",
+    question: p?.question?.slice(0, 300) || `[Question à rédiger] ${cleanTitle(title)}`.slice(0, 300),
+    synthesis: p?.synthesis?.slice(0, 700) ?? null,
+  };
+}
+
+export interface DraftReport {
+  drafted: number;
+  failed: string[];
+}
+
+// Demande à l'IA un brouillon (thème, question, synthèse) pour des fiches déjà importées et jamais rédigées.
+// Une fiche validée ou déjà proposée par l'IA n'est jamais modifiée ; la fiche reste « à vérifier ».
+export async function draftWithAi(
+  db: Db,
+  propose: NonNullable<SyncOptions["propose"]>,
+  opts: { sheetIds?: string[]; limit?: number; portrait?: Photo } = {},
+): Promise<DraftReport> {
+  const report: DraftReport = { drafted: 0, failed: [] };
+  const lectureVideo = alias(videos, "lecture_video");
+  const rows = await db
+    .select({
+      sheet: sheets,
+      title: videos.title,
+      description: videos.description,
+      youtubeId: videos.youtubeId,
+      lecture: { id: lectureVideo.id, youtubeId: lectureVideo.youtubeId, description: lectureVideo.description },
+    })
+    .from(sheets)
+    .innerJoin(videos, eq(videos.id, sheets.shortVideoId))
+    .leftJoin(lectureVideo, eq(lectureVideo.id, sheets.lectureVideoId))
+    .where(
+      and(
+        ne(sheets.status, "validee"),
+        eq(sheets.aiDrafted, false),
+        opts.sheetIds ? inArray(sheets.id, opts.sheetIds) : eq(sheets.status, "a_verifier"),
+      ),
+    )
+    .orderBy(desc(videos.publishedAt))
+    .limit(opts.limit ?? 10);
+
+  for (const { sheet, title, description, youtubeId, lecture } of rows) {
+    let proposal: SheetProposal | null;
+    try {
+      proposal = await propose({ title, description: description ?? "" });
+    } catch (e) {
+      report.failed.push(`« ${title} » (${(e as Error).message})`);
+      continue;
+    }
+    if (!proposal) {
+      report.failed.push(`« ${title} » (aucune proposition)`);
+      continue;
+    }
+    const kept = (sheet.editorialNotes ?? "").split("\n").filter((l) => l && l !== TODO_NOTE);
+    await db
+      .update(sheets)
+      .set({
+        ...proposalFields(proposal, title),
+        aiDrafted: true,
+        editorialNotes: [...proposalNotes(proposal), ...kept].join("\n"),
+        updatedAt: new Date(),
+      })
+      .where(and(eq(sheets.id, sheet.id), eq(sheets.aiDrafted, false), ne(sheets.status, "validee")));
+    if (proposal.author && sheet.shortVideoId) {
+      await attachAuthor(db, proposal.author, [
+        { id: sheet.shortVideoId, youtubeId, description },
+        ...(lecture?.id ? [{ id: lecture.id, youtubeId: lecture.youtubeId!, description: lecture.description }] : []),
+      ], opts.portrait);
+    }
+    report.drafted++;
+  }
+  return report;
+}
+
+// Fiche auteur des Éditions M-Éditer (cherchée dans tout le catalogue), sinon lien « En savoir plus » de la description.
+export async function findProfile(db: Db, name: string, vids: { description: string | null }[]): Promise<string | null> {
+  const cited = await db
+    .select({ description: videos.description })
+    .from(videos)
+    .where(sql`${videos.description} ilike '%izibookstore.com/auteur/%'`);
+  const all = [...vids.map((v) => v.description), ...cited.map((c) => c.description)];
+  return publisherPage(all, name) ?? vids.map((v) => authorLink(v.description)).find(Boolean)?.replace(/^http:\/\//i, "https://") ?? null;
+}
+
+// Photo et présentation de l'auteur sur sa fiche des Éditions M-Éditer, s'il en a une.
+export async function profileInfo(profileUrl: string | null, name: string, fetchImpl: typeof fetch = fetch): Promise<{ photo: string | null; bio: string | null }> {
+  if (!profileUrl || !isPublisherPage(profileUrl)) return { photo: null, bio: null };
+  try {
+    const res = await fetchImpl(profileUrl);
+    if (!res.ok) return { photo: null, bio: null };
+    const html = await res.text();
+    return { photo: photoFromProfilePage(html, profileUrl, name), bio: bioFromProfilePage(html) };
+  } catch {
+    return { photo: null, bio: null };
+  }
+}
+
+export async function profilePhoto(profileUrl: string | null, name: string, fetchImpl: typeof fetch = fetch): Promise<string | null> {
+  return (await profileInfo(profileUrl, name, fetchImpl)).photo;
+}
+
+export const BIO_TODO = "Présentation à compléter : la description YouTube ne présente pas l'auteur.";
+
+// Rattache l'auteur nommé dans la description aux vidéos qui n'en ont pas encore.
+// Sa présentation est reprise telle quelle de la description du Short ou de la vidéo longue ;
+// il reste « non vérifié » tant qu'un membre de l'équipe ne l'a pas contrôlé.
+type Photo = (url: string, opts?: { short?: boolean }) => Promise<string | null>;
+
+export async function attachAuthor(
+  db: Db,
+  name: string,
+  vids: { id: string; youtubeId: string; description: string | null }[],
+  photo: Photo = (url, o) => portraitFromUrl(url, fetch, o),
+) {
+  const fullName = name.trim().slice(0, 120);
+  if (!fullName) return;
+  const free = (await db.select({ id: videos.id }).from(videos).where(and(inArray(videos.id, vids.map((v) => v.id)), isNull(videos.speakerId)))).map((v) => v.id);
+  if (free.length === 0) return;
+
+  const withBio = vids.map((v) => ({ v, bio: authorBio(v.description, fullName) })).find((x) => x.bio);
+  const link = vids.map((v) => authorLink(v.description)).find(Boolean) ?? null;
+  let qualification = withBio?.bio ?? BIO_TODO;
+  let qualificationSource = withBio ? `Description YouTube : https://www.youtube.com/watch?v=${withBio.v.youtubeId}` : link;
+
+  let speaker = await db.query.speakers.findFirst({ where: sql`lower(${speakers.fullName}) = lower(${fullName})` });
+  if (!speaker) {
+    // Portrait : la vraie photo de la fiche auteur M-Éditer ; l'équipe peut la remplacer.
+    // À défaut : l'image du Short, recadrée sur le visage
+    // (les vignettes des vidéos longues portent souvent un titre en surimpression).
+    // Sans présentation dans la description YouTube, on reprend celle de la fiche auteur M-Éditer.
+    const profileUrl = await findProfile(db, fullName, vids);
+    const profile = await profileInfo(profileUrl, fullName);
+    const fromProfile = profile.photo;
+    if (!withBio && profile.bio) [qualification, qualificationSource] = [profile.bio, profileUrl];
+    const photoUrl = fromProfile ?? `https://i.ytimg.com/vi/${vids[0].youtubeId}/maxresdefault.jpg`;
+    [speaker] = await db
+      .insert(speakers)
+      .values({ fullName, qualification, qualificationSource, photoUrl, portrait: await photo(photoUrl, { short: !fromProfile }), profileUrl })
+      .returning();
+  }
+  if (!speaker.verifiedAt && speaker.qualification === BIO_TODO && withBio) {
+    await db.update(speakers).set({ qualification, qualificationSource }).where(eq(speakers.id, speaker.id));
+  }
+  await db.update(videos).set({ speakerId: speaker.id }).where(inArray(videos.id, free));
 }
 
 // ---------- programmation quotidienne ----------
@@ -237,7 +410,7 @@ async function doPlan(db: Db, day: string): Promise<PlanResult> {
 
   // Candidats : fiches originales validées, avec un Short, déjà publiées au moins une fois.
   const pool = await db
-    .select({ sheet: sheets, speakerId: videos.speakerId })
+    .select({ sheet: sheets, speakerId: videos.speakerId, publishedAt: videos.publishedAt })
     .from(sheets)
     .innerJoin(videos, eq(videos.id, sheets.shortVideoId))
     .where(and(eq(sheets.status, "validee"), isNull(sheets.replayOf), isNotNull(sheets.day), lt(sheets.day, day)))
@@ -245,16 +418,26 @@ async function doPlan(db: Db, day: string): Promise<PlanResult> {
   const fresh = pool.filter((c) => !recentRoots.has(c.sheet.id));
   if (fresh.length === 0) return { day, action: "aucune", movedToQueue };
 
+  // Tirage : une fois sur trois parmi les fiches récentes, deux fois sur trois parmi les anciennes
+  // (si l'un des deux groupes est vide, on prend dans l'autre).
+  const rand = seeded(day);
+  const recentFrom = addDays(day, -RECENT_DAYS);
+  const isRecent = (c: (typeof fresh)[number]) => !!c.publishedAt && parisDay(c.publishedAt) >= recentFrom;
+  const wantRecent = rand() < RECENT_SHARE;
+  const group = fresh.filter((c) => isRecent(c) === wantRecent);
+  const candidates = group.length ? group : fresh;
+
   const score = (c: (typeof fresh)[number]) =>
     (weekThemes.has(c.sheet.theme) ? 0 : 2) + (c.speakerId && weekSpeakers.has(c.speakerId) ? 0 : 1);
-  const best = Math.max(...fresh.map(score));
-  const top = fresh.filter((c) => score(c) === best);
-  const pick = top[Math.floor(seeded(day)() * top.length)].sheet;
+  const best = Math.max(...candidates.map(score));
+  const top = candidates.filter((c) => score(c) === best);
+  const pick = top[Math.floor(rand() * top.length)].sheet;
 
   const [replay] = await db
     .insert(sheets)
     .values({
       day,
+      title: pick.title,
       theme: pick.theme,
       question: pick.question,
       synthesis: pick.synthesis,

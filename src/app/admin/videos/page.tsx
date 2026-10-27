@@ -4,6 +4,7 @@ import { speakers, videos } from "@/db/schema";
 import { Notice } from "@/components/Notice";
 import { saveVideo } from "@/app/actions/admin";
 import { formatDuration } from "@/lib/dates";
+import { cleanTitle } from "@/lib/youtube";
 
 type Props = { searchParams: Promise<{ message?: string; modifier?: string }> };
 
@@ -25,7 +26,7 @@ export default async function Page({ searchParams }: Props) {
           <tbody>
             {rows.map(({ v, speaker }) => (
               <tr key={v.id}>
-                <td><a href={`https://www.youtube.com/watch?v=${v.youtubeId}`} target="_blank" rel="noopener noreferrer">{v.title}</a></td>
+                <td><a href={`https://www.youtube.com/watch?v=${v.youtubeId}`} target="_blank" rel="noopener noreferrer">{cleanTitle(v.title)}</a></td>
                 <td>{v.kind === "short" ? "Short" : "Conférence"}</td>
                 <td>{formatDuration(v.durationSeconds)}</td>
                 <td>{speaker ?? <span className="tag warn">à renseigner</span>}</td>
@@ -45,7 +46,7 @@ export default async function Page({ searchParams }: Props) {
           Type
           <select name="type" id="type" defaultValue={edit?.kind ?? "short"}>
             <option value="short">Short (moins de 3 minutes)</option>
-            <option value="conference">Conférence (plus de 15 minutes)</option>
+            <option value="conference">Conférence ou extrait (plus de 3 minutes)</option>
           </select>
         </label>
         <label>Durée (min:s ou h:min:s)<input type="text" name="duree" id="duree" defaultValue={formatDuration(edit?.durationSeconds)} placeholder="2:41" /></label>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseDuration, parseYouTubeId } from "@/lib/youtube";
+import { cleanTitle, parseDuration, parseYouTubeId } from "@/lib/youtube";
 
 describe("YouTube", () => {
   it("reconnaît les différentes formes d'adresse", () => {
@@ -13,5 +13,13 @@ describe("YouTube", () => {
     expect(parseDuration("2:41")).toBe(161);
     expect(parseDuration("1:02:03")).toBe(3723);
     expect(parseDuration("abc")).toBeNull();
+  });
+
+  it("retire les hashtags et les emojis des titres affichés", () => {
+    expect(cleanTitle("Quand l'éthique devient violente #philosophie #morale #réflexion")).toBe("Quand l'éthique devient violente");
+    expect(cleanTitle("L'imperfection humaine est-elle en danger ? 📉 #philosophie #IA #humanité")).toBe("L'imperfection humaine est-elle en danger ?");
+    expect(cleanTitle("L'ennemi révèle qui vous êtes vraiment #Schmitt #identité")).toBe("L'ennemi révèle qui vous êtes vraiment");
+    expect(cleanTitle("Ricœur — De la disproportion à la médiation")).toBe("Ricœur — De la disproportion à la médiation");
+    expect(cleanTitle("#philosophie")).toBe("#philosophie");
   });
 });

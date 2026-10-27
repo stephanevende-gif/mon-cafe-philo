@@ -9,6 +9,8 @@ import { grantAccess } from "@/lib/access";
 import { requireAdmin, requireEditor } from "@/lib/auth";
 import { isDay } from "@/lib/dates";
 import { parseDuration, parseYouTubeId } from "@/lib/youtube";
+import { formatNotions, isNotion } from "@/lib/notions";
+import { portraitFromUrl } from "@/lib/portrait";
 
 const UUID = /^[0-9a-f-]{36}$/;
 
@@ -46,9 +48,12 @@ export async function saveSheet(fd: FormData) {
   const back = id ? `/admin/fiches/${id}` : "/admin/fiches/nouvelle";
   const day = str(fd, "jour", 10);
   if (day && !isDay(day)) fail(back, "La date est invalide.");
-  const theme = str(fd, "theme", 80)?.toLowerCase();
+  const title = str(fd, "titre", 200);
+  const notions = fd.getAll("notion").map(String).filter(isNotion);
+  if (notions.length > 3) fail(back, "Choisissez trois notions au plus.");
+  const theme = formatNotions(notions);
   const question = str(fd, "question", 300);
-  if (!theme || !question) fail(back, "Le thème et la question sont obligatoires.");
+  if (!theme || !question) fail(back, "Le thème (au moins une notion) et la question sont obligatoires.");
   const status = (["brouillon", "a_verifier", "validee"] as const).find((s) => s === fd.get("statut")) ?? "brouillon";
   const shortVideoId = uuid(fd, "short");
   const lectureVideoId = uuid(fd, "conference");
@@ -69,6 +74,7 @@ export async function saveSheet(fd: FormData) {
 
   const values = {
     day,
+    title,
     theme,
     question,
     synthesis,
@@ -111,17 +117,22 @@ export async function saveSpeaker(fd: FormData) {
   const editor = await requireEditor();
   const id = uuid(fd, "id");
   const fullName = str(fd, "nom", 120);
-  const qualification = str(fd, "qualification", 300);
+  const qualification = str(fd, "qualification", 1000);
   if (!fullName || !qualification) fail("/admin/intervenants", "Le nom et la qualification sont obligatoires.");
   const verified = fd.get("verifie") === "on";
   const qualificationSource = httpsUrl(str(fd, "source", 500));
   if (verified && !qualificationSource) fail("/admin/intervenants", "Indiquez la source qui permet de vérifier la qualification.");
   const previous = id ? await db.query.speakers.findFirst({ where: eq(speakers.id, id) }) : null;
+  const photoUrl = httpsUrl(str(fd, "photo", 500));
+  // Le portrait (photo recadrée gardée dans l'application) est refait quand la photo change (ou à la demande).
+  const redraw = photoUrl && (photoUrl !== previous?.photoUrl || !previous?.portrait || fd.get("reprendre") === "on");
   const values = {
     fullName,
     qualification,
     qualificationSource,
-    photoUrl: httpsUrl(str(fd, "photo", 500)),
+    photoUrl,
+    portrait: !photoUrl ? null : redraw ? await portraitFromUrl(photoUrl) : previous?.portrait ?? null,
+    profileUrl: httpsUrl(str(fd, "presentation", 500)?.replace(/^http:\/\//, "https://") ?? null),
     verifiedAt: verified ? previous?.verifiedAt ?? new Date() : null,
     verifiedBy: verified ? previous?.verifiedBy ?? editor.id : null,
   };
@@ -142,7 +153,7 @@ export async function saveVideo(fd: FormData) {
   const durationSeconds = parseDuration(str(fd, "duree", 10) ?? "");
   if (durationSeconds != null) {
     if (kind === "short" && durationSeconds >= 180) fail("/admin/videos", "Un Short doit durer moins de trois minutes.");
-    if (kind === "conference" && durationSeconds <= 900) fail("/admin/videos", "Une conférence doit durer plus de quinze minutes.");
+    if (kind === "conference" && durationSeconds <= 180) fail("/admin/videos", "Une conférence doit durer plus de trois minutes.");
   }
   const published = str(fd, "publiee", 10);
   const values = {
@@ -238,4 +249,20 @@ export async function syncNow() {
   else if (r.sync) parts.push(`${r.sync.newShorts} nouveau(x) Short(s), ${r.sync.queued} en file.`);
   parts.push(...r.plans.map((p) => `${p.day} : ${p.action === "deja_prete" ? "fiche validée prête" : p.action === "rediffusion" ? "rediffusion programmée" : "fiche de secours"}.`));
   redirect(`/admin/synchronisation?message=${encodeURIComponent(parts.join(" "))}`);
+}
+
+// ---------- assistance IA ----------
+
+export async function draftSheetsWithAi(fd: FormData) {
+  await requireEditor();
+  const id = uuid(fd, "id");
+  const back = id ? `/admin/fiches/${id}` : "/admin/synchronisation";
+  const { aiEnabled, proposeSheet } = await import("@/lib/ai");
+  if (!aiEnabled()) fail(back, "Assistance IA désactivée : la clé Anthropic n'est pas configurée.");
+  const { draftWithAi } = await import("@/lib/automation");
+  const r = await draftWithAi(db, (input) => proposeSheet(input), id ? { sheetIds: [id], limit: 1 } : { limit: 10 });
+  revalidatePath("/admin", "layout");
+  const parts = [`${r.drafted} brouillon(s) proposé(s) par l'IA, à relire avant validation.`];
+  if (r.failed.length) parts.push(`Sans proposition : ${r.failed.join(" ; ")}`);
+  redirect(`${back}?message=${encodeURIComponent(parts.join(" "))}`);
 }

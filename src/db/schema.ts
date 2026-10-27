@@ -91,6 +91,10 @@ export const speakers = pgTable("speakers", {
   verifiedAt: timestamp("verified_at", { withTimezone: true }),
   verifiedBy: uuid("verified_by").references(() => users.id, { onDelete: "set null" }),
   photoUrl: text("photo_url"),
+  // Portrait : photo de l'auteur recadrée (JPEG en data URL), tirée de photoUrl.
+  portrait: text("portrait"),
+  // Fiche auteur sur le site des Éditions M-Éditer, ou à défaut une page qui présente l'auteur.
+  profileUrl: text("profile_url"),
   createdAt: createdAt(),
 });
 
@@ -127,6 +131,8 @@ export const sheets = pgTable(
     id: uuid("id").primaryKey().defaultRandom(),
     // Jour de publication (heure de Paris). Vide pour une fiche non programmée.
     day: date("day", { mode: "string" }),
+    // Titre de la fiche : « Interrogeons-nous sur… ». Vide pour les anciennes fiches.
+    title: text("title"),
     theme: text("theme").notNull(),
     question: text("question").notNull(),
     synthesis: text("synthesis"),

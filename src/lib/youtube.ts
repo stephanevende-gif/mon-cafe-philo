@@ -28,3 +28,15 @@ export function parseDuration(input: string): number | null {
   if (parts.some((n) => !Number.isInteger(n) || n < 0)) return null;
   return parts.reduce((acc, n) => acc * 60 + n, 0);
 }
+
+// Titre affiché dans l'application : sans les hashtags (#philosophie) ni les emojis ajoutés pour YouTube.
+// Le titre exact reste enregistré tel quel (il sert à retrouver les vidéos).
+export function cleanTitle(title: string): string {
+  const cleaned = title
+    .replace(/(^|\s)#[\p{L}\p{N}_-]+/gu, " ")
+    .replace(/[\p{Extended_Pictographic}\p{Emoji_Modifier}\p{Regional_Indicator}\u{FE0F}\u{200D}\u{20E3}]/gu, "")
+    .replace(/\s+/g, " ")
+    .replace(/\s+([?!.,;:])$/u, " $1")
+    .trim();
+  return cleaned || title.trim();
+}
