@@ -30,6 +30,7 @@ Le planificateur de Vercel appelle `/api/taches` chaque jour à 4 h (UTC). Il sy
    | `ADMIN_EMAIL` | votre adresse e-mail |
    | `ADMIN_PASSWORD` | un mot de passe solide (10 caractères au moins) |
    | `ADMIN_NAME` | votre nom |
+   | `TESTER_ACCESS_CODE` | le code à donner à vos testeurs, par exemple `cafe-philo-2026` (demandé à l'inscription) |
    | `CRON_SECRET` | une suite d'au moins 20 lettres et chiffres au hasard |
    | `YOUTUBE_API_KEY` | la clé YouTube Data API v3 |
    | `CAFE_PHILO_ANTHROPIC_KEY` | la clé Anthropic |

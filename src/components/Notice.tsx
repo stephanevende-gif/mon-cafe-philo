@@ -8,6 +8,7 @@ const MESSAGES: Record<string, { text: string; kind: "ok" | "error" }> = {
   email_pris: { text: "Un compte existe déjà avec cette adresse. Connectez-vous ou réinitialisez votre mot de passe.", kind: "error" },
   champs: { text: "Certains champs sont incomplets ou incorrects.", kind: "error" },
   consentement: { text: "Vous devez accepter les conditions d'utilisation pour créer un compte.", kind: "error" },
+  code_acces: { text: "Le code d'accès testeur n'est pas le bon. Vérifiez-le auprès des Éditions M-Éditer.", kind: "error" },
   mot_de_passe: { text: "Le mot de passe doit contenir au moins 10 caractères.", kind: "error" },
   jeton: { text: "Ce lien n'est plus valable. Demandez-en un nouveau.", kind: "error" },
   verifie: { text: "Votre adresse e-mail est confirmée. Merci.", kind: "ok" },
