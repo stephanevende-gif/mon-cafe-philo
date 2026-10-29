@@ -11,7 +11,7 @@ const securityHeaders = [
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline'",
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: https://i.ytimg.com",
+      "img-src 'self' data: https://i.ytimg.com https://m-editer.izibookstore.com",
       "font-src 'self'",
       "frame-src https://www.youtube-nocookie.com",
       "connect-src 'self'",
