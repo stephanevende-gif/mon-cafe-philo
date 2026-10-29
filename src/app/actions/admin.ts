@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { books, sessions, sheets, speakers, users, videos } from "@/db/schema";
@@ -134,12 +135,13 @@ export async function saveSheet(fd: FormData) {
   try {
     if (id) {
       await db.update(sheets).set(values).where(eq(sheets.id, id));
-      if (status === "validee") await addBibliography(id);
+      if (status === "validee") after(() => completeValidated(id));
       revalidatePath("/", "layout");
-      redirect(`/admin/fiches/${id}?message=sauve`);
+      redirect(`/admin/fiches/${id}?message=${status === "validee" ? "validee" : "sauve"}`);
     }
     const [row] = await db.insert(sheets).values(values).returning({ id: sheets.id });
-    redirect(`/admin/fiches/${row.id}?message=sauve`);
+    if (status === "validee") after(() => completeValidated(row.id));
+    redirect(`/admin/fiches/${row.id}?message=${status === "validee" ? "validee" : "sauve"}`);
   } catch (e) {
     const code = (e as { code?: string; cause?: { code?: string } }).code ?? (e as { cause?: { code?: string } }).cause?.code;
     if (code === "23505") fail(back, "Une autre fiche est déjà programmée ce jour-là.");
@@ -157,6 +159,19 @@ async function addBibliography(id: string) {
     // Sans bibliographie, la fiche reste servie ; la tâche de la nuit réessaiera le jour où elle sera planifiée.
     console.error("Bibliographie de l'auteur en échec", id, e);
   }
+}
+
+// Une fois la fiche validée et la page rendue, en arrière-plan : bibliographie de l'auteur et deux articles
+// certifiés, si la fiche n'en a pas encore. L'éditeur n'a rien à cliquer.
+async function completeValidated(id: string) {
+  const { aiEnabled, proposeArticles } = await import("@/lib/ai");
+  const { fillArticles } = await import("@/lib/press");
+  await Promise.all([
+    addBibliography(id),
+    aiEnabled()
+      ? fillArticles(db, [id], (input, domains) => proposeArticles(input, domains)).catch((e) => console.error("Articles en échec", id, e))
+      : null,
+  ]);
 }
 
 async function coverChooser() {

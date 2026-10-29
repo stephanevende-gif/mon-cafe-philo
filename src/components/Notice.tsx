@@ -18,6 +18,7 @@ const MESSAGES: Record<string, { text: string; kind: "ok" | "error" }> = {
   bienvenue: { text: "Bienvenue. Vos 10 jours gratuits commencent aujourd'hui. Un e-mail de confirmation vous a été envoyé.", kind: "ok" },
   confirmation: { text: "Pour supprimer votre compte, tapez SUPPRIMER et indiquez votre mot de passe.", kind: "error" },
   sauve: { text: "Modifications enregistrées.", kind: "ok" },
+  validee: { text: "Fiche validée. Les deux articles et la bibliographie de l'auteur sont cherchés en arrière-plan : rechargez la page dans deux ou trois minutes pour les voir.", kind: "ok" },
   suspendu: { text: "Ce compte est suspendu. Écrivez aux Éditions M-Éditer pour contester cette décision.", kind: "error" },
 };
 
