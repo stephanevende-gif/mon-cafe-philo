@@ -6,6 +6,7 @@ import { createDb } from "../src/db";
 import { sheets, users } from "../src/db/schema";
 import { registerUser } from "../src/lib/accounts";
 import { passwordProblem } from "../src/lib/password";
+import { directUrl } from "./direct-url";
 
 // Version de test en ligne, lancé à chaque déploiement après les migrations :
 // 1. une base vide reçoit l'instantané des fiches, auteurs, livres et vidéos préparés (aucun compte lecteur) ;
@@ -19,14 +20,16 @@ async function main() {
     console.warn("DATABASE_URL absent : étape ignorée.");
     return;
   }
-  const { db, pool } = createDb(process.env.DATABASE_URL!);
+  const { db, pool } = createDb(directUrl());
   const [{ n }] = await db.select({ n: count() }).from(sheets);
   if (n === 0 && existsSync(SNAPSHOT)) {
-    // Les commandes propres à psql (lignes commençant par « \ ») ne sont pas du SQL.
-    const sql = gunzipSync(readFileSync(SNAPSHOT))
-      .toString("utf8")
-      .split("\n")
-      .filter((l) => !l.startsWith("\\"))
+    // Les commandes propres à psql (lignes commençant par « \ ») ne sont pas du SQL. Les réglages de session
+    // de l'en-tête (dont un search_path vide) sont retirés : derrière le pooler de Neon, ils resteraient
+    // sur la connexion partagée et casseraient les requêtes suivantes. Les INSERT nomment le schéma public.
+    const lines = gunzipSync(readFileSync(SNAPSHOT)).toString("utf8").split("\n");
+    const firstInsert = lines.findIndex((l) => l.startsWith("INSERT INTO "));
+    const sql = lines
+      .filter((l, i) => !l.startsWith("\\") && !(i < firstInsert && /^(SET |SELECT pg_catalog\.set_config)/.test(l)))
       .join("\n");
     const client = await pool.connect();
     try {
@@ -38,7 +41,6 @@ async function main() {
       await client.query("ROLLBACK");
       throw e;
     } finally {
-      // L'instantané change le search_path de la connexion : elle est fermée plutôt que réutilisée.
       client.release(true);
     }
   }
