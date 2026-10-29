@@ -13,7 +13,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ j
       <div className="stack narrow">
         <h1 className="page-title">{ok ? "Adresse confirmée" : "Lien expiré ou déjà utilisé"}</h1>
         <p>{ok ? "Merci. Votre adresse e-mail est confirmée." : "Vous pouvez demander un nouveau lien depuis votre compte."}</p>
-        <Link className="btn primary" href={ok ? "/" : "/compte"}>{ok ? "Voir la question du jour" : "Mon compte"}</Link>
+        <Link className="btn primary" href={ok ? "/je-pense" : "/compte"}>{ok ? "Voir la question du jour" : "Mon compte"}</Link>
       </div>
     </main>
   );

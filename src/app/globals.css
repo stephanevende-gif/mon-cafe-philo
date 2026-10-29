@@ -269,8 +269,20 @@ th { font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color:
 .accueil .hero { display: flex; flex-direction: column; gap: 18px; padding-top: 8px; }
 .accueil .hero h1 { font-size: clamp(2.3rem, 8.4vw, 4.6rem); line-height: 1.06; letter-spacing: -.01em; max-width: 16ch; }
 .accueil .lead { font-size: clamp(1.05rem, 2.4vw, 1.3rem); max-width: 40ch; color: var(--anthracite); }
-.accueil .du-jour { display: flex; flex-direction: column; gap: 14px; align-items: flex-start; background: var(--papier); border: 1px solid var(--filet); border-left: 3px solid var(--sepia); padding: 24px; }
-.accueil .du-jour .q { font-family: var(--serif); color: var(--nuit); font-size: clamp(1.6rem, 5vw, 2.6rem); line-height: 1.12; text-wrap: balance; }
+/* Le seuil : la question du jour en grand, sur l'image de la conférence, voilée de bleu nuit. */
+.accueil .seuil { position: relative; overflow: hidden; background: var(--nuit); color: var(--papier); min-height: min(78vh, 640px); display: flex; align-items: flex-end; }
+.accueil .seuil .fond { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: grayscale(.35) contrast(1.05); opacity: .55; transform: scale(1.34); /* hors des bandes noires de la vignette 4:3 */ }
+.accueil .seuil .voile { position: relative; display: flex; flex-direction: column; gap: 22px; align-items: flex-start; width: 100%; padding: 40px 22px 32px;
+  background: linear-gradient(to top, rgba(30, 34, 74, .96) 30%, rgba(30, 34, 74, .55) 75%, rgba(30, 34, 74, .15)); }
+.accueil .seuil .eyebrow { color: #e9d6cf; letter-spacing: .14em; }
+.accueil .seuil .q { font-family: var(--serif); color: var(--papier); font-size: clamp(2rem, 6.4vw, 3.9rem); line-height: 1.08; letter-spacing: -.01em; text-wrap: balance; max-width: 22ch; }
+.accueil .invite-du-jour { display: flex; gap: 14px; align-items: center; }
+.accueil .invite-du-jour img { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255, 255, 255, .7); flex: none; }
+.accueil .invite-du-jour div { display: flex; flex-direction: column; gap: 2px; }
+.accueil .invite-du-jour span { font-weight: 600; }
+.accueil .invite-du-jour small { color: #d8dbe8; font-size: .88rem; max-width: 52ch; }
+.btn.clair { background: var(--papier); border-color: var(--papier); color: var(--nuit); }
+.btn.contour { border-color: rgba(255, 255, 255, .8); color: var(--papier); }
 .accueil .temps { list-style: none; margin: 0; padding: 0; display: grid; gap: 28px; }
 .accueil .temps li { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--filet); padding-top: 18px; }
 .accueil .temps .n { font-family: var(--serif); font-size: 2.4rem; line-height: 1; color: var(--sepia); }
@@ -284,13 +296,9 @@ th { font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color:
 .accueil .intervenants b { color: var(--nuit); font-size: 1rem; }
 .accueil .tarif { display: flex; flex-direction: column; gap: 16px; align-items: flex-start; border-top: 1px solid var(--filet); padding-top: 28px; }
 .accueil .site-foot { margin-top: 0; }
-.accueil .ouverture { display: flex; flex-direction: column; gap: 40px; }
-@media (min-width: 1100px) {
-  .accueil .ouverture { display: grid; grid-template-columns: 1.15fr 1fr; gap: 64px; align-items: center; }
-}
 @media (min-width: 760px) {
   .accueil { gap: 80px; }
-  .accueil .du-jour { padding: 36px 40px; }
+  .accueil .seuil .voile { padding: 64px 56px 48px; }
   .accueil .temps, .accueil .publics { grid-template-columns: repeat(3, 1fr); gap: 36px; }
   .accueil .garantie { padding: 40px; }
 }
