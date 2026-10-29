@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { and, eq, isNotNull, not, like, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { speakers, videos, type User } from "@/db/schema";
+import { speakers, videos, type Sheet, type User } from "@/db/schema";
 import { PAID_DAYS, PRICE_CENTS, TRIAL_DAYS } from "@/lib/access";
 import { formatDayLong } from "@/lib/dates";
 import { STUDENT_PATTERN } from "@/lib/student";
@@ -79,7 +79,7 @@ async function faces(day: string) {
   return out;
 }
 
-export async function Accueil({ ctx, user }: { ctx: JourneyContext; user: User | null }) {
+export async function Accueil({ ctx, user, tests = [] }: { ctx: JourneyContext; user: User | null; tests?: Sheet[] }) {
   const { sheet } = ctx;
   const [people, guest] = await Promise.all([
     faces(ctx.day),
@@ -103,7 +103,7 @@ export async function Accueil({ ctx, user }: { ctx: JourneyContext; user: User |
       <section className="seuil">
         {image && <img className="fond" src={thumb(image)} alt="" />}
         <div className="voile">
-          <span className="eyebrow">Question du {formatDayLong(ctx.day)}</span>
+          <span className="eyebrow">{tests.length ? "Version de test" : `Question du ${formatDayLong(ctx.day)}`}</span>
           {sheet ? (
             <p className="q"><Question text={sheet.question} /></p>
           ) : (
@@ -137,6 +137,30 @@ export async function Accueil({ ctx, user }: { ctx: JourneyContext; user: User |
         </p>
         {!user && <p className="small muted">{TRIAL_DAYS} jours gratuits, sans carte bancaire.</p>}
       </section>
+
+      {tests.length > 0 && (
+        <section className="stack-lg questions-test" id="questions-test">
+          <div className="stack">
+            <h2>{tests.length > 1 ? `Les ${tests.length} questions à essayer` : "La question à essayer"}</h2>
+            <p className="muted">
+              Cette version de test est ouverte à quelques lecteurs. Travaillez chaque question dans l&apos;ordre des trois temps, puis
+              dites-nous ce que vous en pensez.
+            </p>
+          </div>
+          <ol className="liste-fiches">
+            {tests.map((t, i) => {
+              const href = i === 0 ? "/je-pense" : user ? `/mes-fiches/${t.id}` : "/inscription";
+              return (
+                <li key={t.id}>
+                  <span className="small muted">Question {i + 1} · {t.theme}</span>
+                  <Link className="q" href={href}><Question text={t.question} /></Link>
+                  <div className="row"><Link className="btn" href={href}>J&apos;y réfléchis →</Link></div>
+                </li>
+              );
+            })}
+          </ol>
+        </section>
+      )}
 
       <section className="stack-lg">
         <h2>Trois temps, chaque jour</h2>

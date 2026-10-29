@@ -4,6 +4,8 @@ import { AccessEnded } from "@/components/AccessEnded";
 import { currentAccess, requireUser } from "@/lib/auth";
 import { formatDayLong, isDay, parisDay } from "@/lib/dates";
 import { archiveFacets, searchArchives } from "@/lib/sheets";
+import { testSheets } from "@/lib/test-version";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Archives" };
@@ -12,6 +14,8 @@ type SP = { q?: string; theme?: string; intervenant?: string; du?: string; au?: 
 
 export default async function Page({ searchParams }: { searchParams: Promise<SP> }) {
   await requireUser("/archives");
+  // Version de test : seules les questions de test sont ouvertes, présentées sur l'accueil.
+  if ((await testSheets()).length) redirect("/#questions-test");
   if (!(await currentAccess())?.active) return <main className="page"><AccessEnded /></main>;
   const sp = await searchParams;
   const today = parisDay();

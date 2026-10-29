@@ -37,4 +37,23 @@ describe("couvertures des livres conseillés", () => {
     expect(seen).toBe(2);
     expect(cover).toMatch(/^data:image\/jpeg;base64,/);
   });
+
+  it("sans édition française illustrée, cherche sous le titre original et accepte une édition étrangère", async () => {
+    const png = await sharp({ create: { width: 300, height: 450, channels: 3, background: "#943e37" } }).png().toBuffer();
+    const popper = { philosopher: "Karl Popper", book: "Misère de l'historicisme", description: "Deux phrases." };
+    const calls: string[] = [];
+    const f = (async (url: string) => {
+      calls.push(url);
+      if (url.includes("search.json")) {
+        const docs = url.includes("Poverty") ? [{ title: "The Poverty of Historicism", author_name: ["Karl Popper"], cover_i: 9 }] : [];
+        return new Response(JSON.stringify({ docs }));
+      }
+      return new Response(new Uint8Array(png));
+    }) as unknown as typeof fetch;
+    let foreignSeen: boolean | null = null;
+    const cover = await findCover(popper, f, async (_c, _r, foreign) => ((foreignSeen = foreign), 0), async () => "The Poverty of Historicism");
+    expect(cover).toMatch(/^data:image\/jpeg;base64,/);
+    expect(foreignSeen).toBe(true);
+    expect(calls.some((u) => u.includes("/b/id/9-L.jpg"))).toBe(true);
+  });
 });

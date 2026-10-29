@@ -10,6 +10,7 @@ export function SiteFoot() {
       <a href={LINKS.youtube} target="_blank" rel="noopener noreferrer">Chaîne YouTube</a>
       <Link href="/mentions-legales">Mentions légales</Link>
       <Link href="/confidentialite">Confidentialité</Link>
+      <small className="copyright">© 2003–{new Date().getFullYear()} Éditions M-Éditer. Tous droits réservés.</small>
     </footer>
   );
 }
