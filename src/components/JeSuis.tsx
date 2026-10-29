@@ -3,7 +3,8 @@ import { currentAccess, requireUser } from "@/lib/auth";
 import { formatDate, formatTime } from "@/lib/dates";
 import type { JourneyContext } from "@/lib/journey";
 import { listEntries } from "@/lib/notebook";
-import { saveReflection } from "@/app/actions/notebook";
+import { getNote, isEmptyNote } from "@/lib/listening-notes";
+import { saveProblemAttempt, saveReflection } from "@/app/actions/notebook";
 import { getSheetDetails } from "@/lib/sheets";
 import { Steps } from "./Steps";
 import { Question } from "./Question";
@@ -27,7 +28,7 @@ function nextPrompt(count: number, helpSolution: boolean): { invite?: string; la
   return { label, placeholder: "Nuancer, compléter, objecter à ma propre pensée…" };
 }
 
-export async function JeSuis({ ctx, message }: { ctx: JourneyContext; message?: string }) {
+export async function JeSuis({ ctx, message, showProblem = false }: { ctx: JourneyContext; message?: string; showProblem?: boolean }) {
   const here = `${ctx.base}/je-suis`;
   const user = await requireUser(here);
   const access = await currentAccess();
@@ -39,13 +40,14 @@ export async function JeSuis({ ctx, message }: { ctx: JourneyContext; message?: 
       </main>
     );
   }
-  const entries = await listEntries(db, user.id, ctx.sheet.id);
+  const [entries, note] = await Promise.all([listEntries(db, user.id, ctx.sheet.id), getNote(db, user.id, ctx.sheet.id)]);
   const authorBooks = ctx.sheet.authorBooks ?? [];
   const author = authorBooks.length ? ((await getSheetDetails(db, ctx.sheet)).short?.speaker ?? null) : null;
   const shown = entries.length > 2 ? [entries[0], entries[entries.length - 1]] : entries;
   // À partir de la version 3, le lecteur est invité à proposer sa solution au problème posé par la question.
   const helpSolution = entries.length >= 2 && !!ctx.sheet.solutionQuestion;
   const prompt = nextPrompt(entries.length, helpSolution);
+  const attempt = note?.probleme?.trim() || "";
 
   return (
     <main className="page">
@@ -79,18 +81,60 @@ export async function JeSuis({ ctx, message }: { ctx: JourneyContext; message?: 
             </div>
           )}
           {helpSolution && (
-            <section className="probleme" aria-labelledby="probleme-titre">
+            <section className="probleme" id="probleme" aria-labelledby="probleme-titre">
               <span className="step-label">Pour aller plus loin</span>
               <p className="principe">
                 On ne philosophe pas vraiment tant que l&apos;on ne pose pas un problème, qu&apos;on ne l&apos;instruit pas et qu&apos;on ne s&apos;y confronte pas pour le
                 surmonter, avec et pour les autres. Les solutions évidentes et les réponses sans analyse sont sources d&apos;erreur, et même de faute.
               </p>
-              <div className="corps">
-                <h2 id="probleme-titre" className="invite">Quel est alors le problème à surmonter&nbsp;?</h2>
-                {ctx.sheet.problem && <p>{ctx.sheet.problem}</p>}
-                <p className="solution">{ctx.sheet.solutionQuestion}</p>
-              </div>
+              {!attempt && !showProblem ? (
+                <div className="corps">
+                  <h2 id="probleme-titre" className="invite">À vous : quel est le problème à surmonter&nbsp;?</h2>
+                  <p>
+                    Cherchez les deux exigences légitimes que la question met en tension, et le risque que l&apos;on court en ne
+                    suivant que l&apos;une d&apos;elles. Vous pouvez partir de ce modèle :
+                  </p>
+                  <p className="modele">
+                    Quelle attitude adopter (individuelle et collective) pour qu&apos;à la fois nous puissions, d&apos;une part, … pour gagner
+                    en … sans courir le risque de …, et d&apos;autre part, garantir … sans courir le risque cette fois de … ?
+                  </p>
+                  <form action={saveProblemAttempt} className="stack">
+                    <input type="hidden" name="fiche" value={ctx.sheet.id} />
+                    <input type="hidden" name="retour" value={here} />
+                    <label>
+                      <span className="visually-hidden">Mon problème</span>
+                      <textarea name="texte" id="probleme-texte" maxLength={4000} placeholder="Quelle attitude adopter (individuelle et collective) pour qu'à la fois nous puissions…" style={{ minHeight: 130 }} />
+                      <span className="hint">Visible de vous seul</span>
+                    </label>
+                    <div className="row">
+                      <button className="btn primary" type="submit">Enregistrer et découvrir le problème</button>
+                      <a className="btn" href={`${here}?voir=probleme#probleme`}>Voir le problème sans m&apos;exercer</a>
+                    </div>
+                  </form>
+                </div>
+              ) : (
+                <div className="corps">
+                  <h2 id="probleme-titre" className="invite">Quel est alors le problème à surmonter&nbsp;?</h2>
+                  {attempt && (
+                    <article className="version">
+                      <div className="meta"><span>Mon problème</span></div>
+                      <p style={{ whiteSpace: "pre-line" }}>{attempt}</p>
+                    </article>
+                  )}
+                  {attempt && <span className="eyebrow">Le problème selon la fiche</span>}
+                  {ctx.sheet.problem && <p>{ctx.sheet.problem}</p>}
+                  <p className="solution">{ctx.sheet.solutionQuestion}</p>
+                </div>
+              )}
             </section>
+          )}
+          {note && !isEmptyNote(note) && (
+            <article className="version notes-relues">
+              <div className="meta"><span>Mes notes d&apos;écoute · Donc ?</span></div>
+              {note.these.trim() && <p><b>Thèse.</b> {note.these}</p>}
+              {note.arguments.trim() && <p><b>Arguments.</b> {note.arguments}</p>}
+              {note.exemples.trim() && <p><b>Exemples et objections.</b> {note.exemples}</p>}
+            </article>
           )}
           {prompt.invite && <p className="invite">{prompt.invite}</p>}
           <form action={saveReflection} className="stack">

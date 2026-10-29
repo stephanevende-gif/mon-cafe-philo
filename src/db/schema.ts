@@ -203,6 +203,29 @@ export const notebookEntries = pgTable(
   (t) => [uniqueIndex("notebook_version_idx").on(t.userId, t.sheetId, t.version)],
 );
 
+// Notes de travail du lecteur sur une fiche : ses notes d'écoute à côté de la conférence (la thèse, les arguments,
+// un exemple ou une objection) et son essai pour poser lui-même le problème, avant de lire celui de la fiche.
+// Une seule note par lecteur et par fiche, mise à jour au fil du travail.
+export interface ListeningNote {
+  these: string;
+  arguments: string;
+  exemples: string;
+  probleme?: string;
+}
+
+export const listeningNotes = pgTable(
+  "listening_notes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    sheetId: uuid("sheet_id").notNull().references(() => sheets.id, { onDelete: "cascade" }),
+    notes: jsonb("notes").$type<ListeningNote>().notNull(),
+    createdAt: createdAt(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex("listening_notes_idx").on(t.userId, t.sheetId)],
+);
+
 export const syncRuns = pgTable("sync_runs", {
   id: uuid("id").primaryKey().defaultRandom(),
   kind: runKindEnum("kind").notNull(),
