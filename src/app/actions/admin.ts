@@ -134,6 +134,7 @@ export async function saveSheet(fd: FormData) {
   try {
     if (id) {
       await db.update(sheets).set(values).where(eq(sheets.id, id));
+      if (status === "validee") await addBibliography(id);
       revalidatePath("/", "layout");
       redirect(`/admin/fiches/${id}?message=sauve`);
     }
@@ -143,6 +144,18 @@ export async function saveSheet(fd: FormData) {
     const code = (e as { code?: string; cause?: { code?: string } }).code ?? (e as { cause?: { code?: string } }).cause?.code;
     if (code === "23505") fail(back, "Une autre fiche est déjà programmée ce jour-là.");
     throw e;
+  }
+}
+
+// Bibliographie de l'auteur aux Éditions M-Éditer, dès qu'une fiche est validée : elle peut être servie avant
+// d'avoir été planifiée (fiche reçue à la place de celle du jour, page « Mes fiches »).
+async function addBibliography(id: string) {
+  try {
+    const [{ fillBibliographies }, { aiEnabled, chooseAuthorBooks }] = await Promise.all([import("@/lib/automation"), import("@/lib/ai")]);
+    await fillBibliographies(db, { sheetIds: [id], choose: aiEnabled() ? (question, titles) => chooseAuthorBooks(question, titles) : null });
+  } catch (e) {
+    // Sans bibliographie, la fiche reste servie ; la tâche de la nuit réessaiera le jour où elle sera planifiée.
+    console.error("Bibliographie de l'auteur en échec", id, e);
   }
 }
 
@@ -350,7 +363,7 @@ export async function findArticlesWithAi(fd: FormData) {
   const { aiEnabled, proposeArticles } = await import("@/lib/ai");
   if (!aiEnabled()) fail(back, "Assistance IA désactivée : la clé Anthropic n'est pas configurée.");
   const { fillArticles } = await import("@/lib/press");
-  const r = await fillArticles(db, [id], (input, domains) => proposeArticles(input, domains), { replace: true });
+  const [r] = await Promise.all([fillArticles(db, [id], (input, domains) => proposeArticles(input, domains), { replace: true }), addBibliography(id)]);
   revalidatePath("/", "layout");
   const why = r.reasons[0];
   fail(back, r.done ? "Deux articles trouvés, lus en entier et certifiés par l'IA." : `L'IA n'a pas trouvé deux articles qui conviennent${why ? ` (${why})` : ""}. Vous pouvez relancer la recherche ou les saisir vous-même.`);
