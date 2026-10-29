@@ -3,6 +3,7 @@ import { and, desc, eq, isNull } from "drizzle-orm";
 import { db } from "@/db";
 import { sheets, syncRuns } from "@/db/schema";
 import { Notice } from "@/components/Notice";
+import { PendingButton } from "@/components/PendingButton";
 import { draftSheetsWithAi, syncNow } from "@/app/actions/admin";
 import { aiEnabled } from "@/lib/ai";
 import { DEFAULT_PLAYLIST } from "@/lib/automation";
@@ -40,7 +41,7 @@ export default async function Page({ searchParams }: Props) {
         <p>Assistance IA (facultative) : <Status ok={aiEnabled()} yes="activée" no="désactivée" /></p>
         <p>Playlist : <a href={`https://www.youtube.com/playlist?list=${playlist}`} target="_blank" rel="noopener noreferrer">{playlist}</a></p>
         <form action={syncNow}>
-          <button className="btn primary" type="submit">Synchroniser maintenant</button>
+          <PendingButton className="btn primary" pending="Synchronisation en cours (quelques minutes)…">Synchroniser maintenant</PendingButton>
         </form>
       </section>
 
@@ -49,7 +50,7 @@ export default async function Page({ searchParams }: Props) {
         <p className="muted">Fiches préparées automatiquement, en attente de relecture et d&apos;une date.</p>
         {aiEnabled() && (
           <form action={draftSheetsWithAi}>
-            <button className="btn" type="submit">Préparer 10 brouillons avec l&apos;IA</button>
+            <PendingButton pending="Rédaction des brouillons en cours…">Préparer 10 brouillons avec l&apos;IA</PendingButton>
             <span className="hint"> Les Shorts les plus récents d&apos;abord. Chaque brouillon reste à relire avant validation.</span>
           </form>
         )}

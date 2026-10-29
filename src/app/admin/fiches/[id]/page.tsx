@@ -3,6 +3,7 @@ import { asc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { books, sheets, speakers, videos } from "@/db/schema";
 import { Notice } from "@/components/Notice";
+import { PendingButton } from "@/components/PendingButton";
 import { chooseShortPoster, deleteSheet, draftSheetsWithAi, findArticlesWithAi, saveSheet } from "@/app/actions/admin";
 import { aiEnabled } from "@/lib/ai";
 import { formatDate } from "@/lib/dates";
@@ -43,14 +44,14 @@ export default async function Page({ params, searchParams }: Props) {
       {sheet && aiEnabled() && !sheet.aiDrafted && sheet.status !== "validee" && sheet.shortVideoId && (
         <form action={draftSheetsWithAi}>
           <input type="hidden" name="id" value={sheet.id} />
-          <button className="btn" type="submit">Proposer titre, thème, question et approche avec l&apos;IA</button>
+          <PendingButton pending="Rédaction en cours…">Proposer titre, thème, question et approche avec l&apos;IA</PendingButton>
           <span className="hint"> Remplace le titre, le thème, la question et l&apos;approche actuels par un brouillon à relire.</span>
         </form>
       )}
       {sheet && aiEnabled() && (
         <form action={findArticlesWithAi}>
           <input type="hidden" name="id" value={sheet.id} />
-          <button className="btn" type="submit">{sheet.pressArticles?.length ? "Chercher deux autres articles avec l'IA" : "Chercher deux articles avec l'IA"}</button>
+          <PendingButton pending="Recherche et lecture des articles en cours (environ une minute)…">{sheet.pressArticles?.length ? "Chercher deux autres articles avec l'IA" : "Chercher deux articles avec l'IA"}</PendingButton>
           <span className="hint"> Presse et revues en ligne en accès libre ; environ une minute.</span>
         </form>
       )}
