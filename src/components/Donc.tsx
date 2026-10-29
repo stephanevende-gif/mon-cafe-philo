@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { currentAccess, requireUser } from "@/lib/auth";
 import { formatDuration, formatTime } from "@/lib/dates";
 import { listEntries } from "@/lib/notebook";
+import { EMPTY_NOTE, getNote } from "@/lib/listening-notes";
 import { saveReflection } from "@/app/actions/notebook";
 import type { JourneyContext } from "@/lib/journey";
 import { authenticityConfirmed, getSheetDetails } from "@/lib/sheets";
@@ -13,6 +14,7 @@ import { YouTubePlayer } from "./YouTubePlayer";
 import { AccessEnded } from "./AccessEnded";
 import { SiteFoot } from "./SiteFoot";
 import { Notice } from "./Notice";
+import { NotesEcoute } from "./NotesEcoute";
 
 export async function Donc({ ctx, message }: { ctx: JourneyContext; message?: string }) {
   const here = `${ctx.base}/donc`;
@@ -26,7 +28,11 @@ export async function Donc({ ctx, message }: { ctx: JourneyContext; message?: st
       </main>
     );
   }
-  const [d, entries] = await Promise.all([getSheetDetails(db, ctx.sheet), listEntries(db, user.id, ctx.sheet.id)]);
+  const [d, entries, note] = await Promise.all([
+    getSheetDetails(db, ctx.sheet),
+    listEntries(db, user.id, ctx.sheet.id),
+    getNote(db, user.id, ctx.sheet.id),
+  ]);
   const speaker = d.short?.speaker ?? d.lecture?.speaker ?? null;
   const authentic = authenticityConfirmed(d);
   // La photo de l'auteur, gardée dans l'application ; à défaut, l'image YouTube d'origine (seule image externe autorisée par le site).
@@ -120,15 +126,23 @@ export async function Donc({ ctx, message }: { ctx: JourneyContext; message?: st
                 <div className="meta"><span>Ma version 2 · Donc ?</span><span>{formatTime(entries[1].createdAt)}</span></div>
                 <p>{entries[1].body}</p>
               </div>
+              <p className="relance" id="relance">
+                Votre pensée a bougé. Reste à cerner ce qui rend la question vraiment difficile : essayez de poser vous-même
+                le problème, avant de découvrir celui que propose la fiche.
+              </p>
+              <div className="row"><Link className="btn primary" href={`${ctx.base}/je-suis#probleme`}>Poser le problème : Je suis →</Link></div>
             </>
           )}
         </div>
 
         {d.lecture ? (
-          <div className="media loin">
-            <div className="kind"><span>Aller plus loin avec l&apos;auteur</span></div>
-            <YouTubePlayer youtubeId={d.lecture.youtubeId} title={cleanTitle(d.lecture.title)} duration={formatDuration(d.lecture.durationSeconds)} poster={d.lecture.poster} />
-            <span className="ttl">{cleanTitle(d.lecture.title)}</span>
+          <div className="loin avec-notes">
+            <div className="media">
+              <div className="kind"><span>Aller plus loin avec l&apos;auteur</span></div>
+              <YouTubePlayer youtubeId={d.lecture.youtubeId} title={cleanTitle(d.lecture.title)} duration={formatDuration(d.lecture.durationSeconds)} poster={d.lecture.poster} />
+              <span className="ttl">{cleanTitle(d.lecture.title)}</span>
+            </div>
+            <NotesEcoute sheetId={d.sheet.id} initial={note ?? EMPTY_NOTE} />
           </div>
         ) : d.short ? (
           <p className="pending loin">La vidéo longue de cet auteur n&apos;est pas encore identifiée.</p>

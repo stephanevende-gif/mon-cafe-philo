@@ -292,3 +292,20 @@ th { font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color:
   .accueil .temps, .accueil .publics { grid-template-columns: repeat(3, 1fr); gap: 36px; }
   .accueil .garantie { padding: 40px; }
 }
+
+/* ---------- notes d'écoute, à côté de la conférence ---------- */
+.avec-notes { display: grid; gap: 20px; }
+.notes-ecoute { display: flex; flex-direction: column; gap: 12px; background: var(--papier); border: 1px solid var(--filet); border-top: 3px solid var(--nuit); padding: 16px; }
+.notes-ecoute .entete { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; align-items: baseline; }
+.notes-ecoute .etat { font-size: .78rem; color: var(--gris); }
+.notes-ecoute .etat.saved { color: var(--succes); }
+.notes-ecoute .etat.error { color: var(--sepia); }
+.notes-ecoute label { font-size: .85rem; }
+.notes-ecoute textarea { min-height: 0; resize: vertical; font-size: .95rem; line-height: 1.45; }
+@media (min-width: 900px) {
+  .avec-notes { grid-template-columns: minmax(0, 1.45fr) minmax(260px, 1fr); align-items: start; }
+  .avec-notes .notes-ecoute { position: sticky; top: 16px; }
+}
+.notes-relues p { white-space: pre-line; }
+.probleme { scroll-margin-top: 24px; }
+.probleme .corps .modele { font-family: var(--serif); color: var(--gris); font-size: 1.02rem; line-height: 1.5; border: 1px dashed var(--filet); padding: 12px 14px; background: var(--papier); }

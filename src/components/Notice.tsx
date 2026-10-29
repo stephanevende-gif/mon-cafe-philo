@@ -1,4 +1,5 @@
 const MESSAGES: Record<string, { text: string; kind: "ok" | "error" }> = {
+  probleme: { text: "Votre problème est enregistré. Comparez-le maintenant à celui de la fiche.", kind: "ok" },
   enregistre: { text: "Votre réflexion est enregistrée dans votre carnet.", kind: "ok" },
   vide: { text: "Écrivez quelques mots avant d'enregistrer.", kind: "error" },
   trop: { text: "Vous avez enregistré beaucoup de versions en peu de temps. Réessayez dans une heure.", kind: "error" },
