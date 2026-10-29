@@ -89,6 +89,8 @@ textarea { min-height: 160px; resize: vertical; line-height: 1.55; }
 .btn.sepia { border-color: var(--sepia); color: var(--sepia); }
 .btn.small { min-height: 36px; padding: 0 14px; font-size: .85rem; }
 .btn.danger { border-color: var(--sepia); background: var(--sepia); color: var(--papier); }
+.btn:hover:not(:disabled) { box-shadow: 0 0 0 2px var(--filet); }
+.btn:disabled { opacity: .6; cursor: progress; }
 .notice { border: 1px solid var(--filet); border-left: 3px solid var(--nuit); background: var(--papier); padding: 12px 16px; font-size: .92rem; }
 .notice.error { border-left-color: var(--sepia); }
 .notice.ok { border-left-color: var(--succes); }
