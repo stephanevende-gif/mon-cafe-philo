@@ -18,7 +18,7 @@ export async function JePense({ ctx, message }: { ctx: JourneyContext; message?:
   const access = await currentAccess();
   const entries = user && sheet ? await listEntries(db, user.id, sheet.id) : [];
   const first = entries[0];
-  const here = ctx.base || "/";
+  const here = ctx.base || "/je-pense";
 
   return (
     <main className="page">

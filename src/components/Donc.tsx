@@ -91,7 +91,7 @@ export async function Donc({ ctx, message }: { ctx: JourneyContext; message?: st
             <>
               <p className="invite">Et vous, qu&apos;en pensez-vous&nbsp;?</p>
               <p className="muted">Commencez par écrire votre première réflexion, avant d&apos;écouter l&apos;auteur.</p>
-              <div className="row"><Link className="btn" href={ctx.base || "/"}>Écrire ma première réflexion : Je pense →</Link></div>
+              <div className="row"><Link className="btn" href={ctx.base || "/je-pense"}>Écrire ma première réflexion : Je pense →</Link></div>
             </>
           ) : entries.length === 1 ? (
             <>
