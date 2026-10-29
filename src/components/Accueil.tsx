@@ -18,18 +18,18 @@ const firstSentence = (s: string) => s.match(/^.*?[.!?](\s|$)/)?.[0].trim() ?? s
 const STEPS = [
   {
     label: "Je pense",
-    title: "La question",
-    text: "Vous lisez la question du jour et notez votre première réflexion, avant de lire quoi que ce soit d'autre.",
+    title: "Un sujet de réflexion",
+    text: "Vous découvrez la question du jour et notez votre première réflexion sur le sujet.",
   },
   {
     label: "Donc ?",
-    title: "La piste",
-    text: "Le problème que pose la question, puis un philosophe qui l'éclaire : un extrait vidéo d'une minute et sa conférence complète.",
+    title: "Une discussion argumentée",
+    text: "Une analyse du sujet s'engage alors en compagnie d'un philosophe contemporain.",
   },
   {
     label: "Je suis",
-    title: "Mon carnet",
-    text: "Vous revenez sur votre pensée, et trouvez les livres et les passages précis pour aller plus loin. Votre carnet garde tout.",
+    title: "Une réponse réfléchie",
+    text: "Le problème que travaille la question se découvre. Une solution devrait permettre de le surmonter, que vous pourrez mettre en perspective.",
   },
 ];
 
