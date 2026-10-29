@@ -38,6 +38,15 @@ export default async function Page({ searchParams }: Props) {
         <label>Nom complet<input type="text" name="nom" id="nom" required defaultValue={edit?.fullName ?? ""} /></label>
         <label>Présentation<textarea name="qualification" id="qualification" required maxLength={1000} defaultValue={edit?.qualification ?? ""} placeholder="Professeur de philosophie, université de…" /></label>
         <label>Lien de présentation (fiche auteur M-Éditer, sinon une page qui présente l&apos;auteur)<input type="url" name="presentation" id="presentation" defaultValue={edit?.profileUrl ?? ""} /></label>
+        <label>
+          Intervenante ou intervenant
+          <select name="genre" id="genre" defaultValue={edit?.gender ?? ""}>
+            <option value="">Non renseigné</option>
+            <option value="femme">Femme</option>
+            <option value="homme">Homme</option>
+          </select>
+          <span className="hint">Sert à équilibrer le tirage des fiches : environ un tiers d&apos;intervenantes.</span>
+        </label>
         <label>Source de vérification (lien https)<input type="url" name="source" id="source" defaultValue={edit?.qualificationSource ?? ""} /></label>
         <label>Photo de l&apos;auteur (lien https, facultatif)<input type="url" name="photo" id="photo" defaultValue={edit?.photoUrl ?? ""} /><span className="hint">De préférence la photo de sa fiche auteur M-Éditer, sinon une photo où il regarde l&apos;objectif. Elle est recadrée puis gardée dans l&apos;application.</span></label>
         {edit?.portrait && <img src={edit.portrait} alt={`Portrait de ${edit.fullName}`} width={120} height={140} style={{ border: "1px solid var(--filet)" }} />}

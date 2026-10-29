@@ -8,6 +8,7 @@ import { addDays, parisDay } from "./dates";
 import { getVideos, linkedVideoIds, listPlaylist, type Fetch } from "./youtube-api";
 import type { SheetProposal } from "./ai";
 import { cleanTitle } from "./youtube";
+import { genderFromBio } from "./gender";
 import { formatNotions } from "./notions";
 import { authorBio, authorLink, isPublisherPage, photoFromProfilePage, bioFromProfilePage, publisherPage } from "./authors";
 import { portraitFromUrl } from "./portrait";
@@ -19,6 +20,8 @@ const SHORT_MAX = 180;
 const LECTURE_MIN = 180;
 const NO_REPEAT_DAYS = 365; // une fiche ne revient pas avant un an
 const DIVERSITY_DAYS = 7;
+const SPEAKER_DAYS = 30; // un même intervenant ne revient pas dans le mois, si possible
+const WOMEN_SHARE = 1 / 3; // part d'intervenantes visée
 // Rediffusions : deux tiers de fiches anciennes, un tiers de fiches récentes (Short publié depuis moins d'un an).
 const RECENT_DAYS = 365;
 const RECENT_SHARE = 1 / 3;
@@ -368,7 +371,7 @@ export async function attachAuthor(
     const photoUrl = fromProfile ?? `https://i.ytimg.com/vi/${vids[0].youtubeId}/maxresdefault.jpg`;
     [speaker] = await db
       .insert(speakers)
-      .values({ fullName, qualification, qualificationSource, photoUrl, portrait: await photo(photoUrl, { short: !fromProfile }), profileUrl })
+      .values({ fullName, qualification, qualificationSource, photoUrl, portrait: await photo(photoUrl, { short: !fromProfile }), profileUrl, gender: genderFromBio(qualification) })
       .returning();
   }
   if (!speaker.verifiedAt && speaker.qualification === BIO_TODO && withBio) {
@@ -436,18 +439,28 @@ async function doPlan(db: Db, day: string): Promise<PlanResult> {
   const weekStart = addDays(day, -DIVERSITY_DAYS);
   const lastWeek = shown.filter((r) => r.day! >= weekStart && r.day! < day);
   const weekThemes = new Set(lastWeek.map((r) => r.theme));
-  const weekShorts = lastWeek.map((r) => r.shortVideoId).filter((x): x is string => !!x);
-  const weekSpeakers = new Set(
-    weekShorts.length
-      ? (await db.select({ s: videos.speakerId }).from(videos).where(inArray(videos.id, weekShorts))).map((r) => r.s).filter(Boolean)
-      : [],
-  );
+  // Sur les 30 derniers jours : les intervenants déjà entendus, et la part d'intervenantes.
+  const monthStart = addDays(day, -SPEAKER_DAYS);
+  const lastMonth = shown.filter((r) => r.day! >= monthStart && r.day! < day);
+  const monthShorts = lastMonth.map((r) => r.shortVideoId).filter((x): x is string => !!x);
+  const monthPeople = monthShorts.length
+    ? await db
+        .select({ id: videos.speakerId, gender: speakers.gender })
+        .from(videos)
+        .innerJoin(speakers, eq(speakers.id, videos.speakerId))
+        .where(inArray(videos.id, monthShorts))
+    : [];
+  const monthSpeakers = new Set(monthPeople.map((p) => p.id));
+  const known = monthPeople.filter((p) => p.gender);
+  const womenShare = known.length ? known.filter((p) => p.gender === "femme").length / known.length : 0;
+  const wantGender = womenShare < WOMEN_SHARE ? "femme" : "homme";
 
   // Candidats : fiches originales validées, avec un Short.
   const pool = await db
-    .select({ sheet: sheets, speakerId: videos.speakerId, publishedAt: videos.publishedAt })
+    .select({ sheet: sheets, speakerId: videos.speakerId, publishedAt: videos.publishedAt, gender: speakers.gender })
     .from(sheets)
     .innerJoin(videos, eq(videos.id, sheets.shortVideoId))
+    .leftJoin(speakers, eq(speakers.id, videos.speakerId))
     .where(and(eq(sheets.status, "validee"), isNull(sheets.replayOf)))
     .orderBy(asc(sheets.id));
   if (pool.length === 0) return { day, action: "aucune", movedToQueue };
@@ -470,10 +483,13 @@ async function doPlan(db: Db, day: string): Promise<PlanResult> {
     const isRecent = (c: (typeof fresh)[number]) => !!c.publishedAt && parisDay(c.publishedAt) >= recentFrom;
     const wantRecent = rand() < RECENT_SHARE;
     const group = fresh.filter((c) => isRecent(c) === wantRecent);
-    const candidates = group.length ? group : fresh;
+    let candidates = group.length ? group : fresh;
+    // L'équilibre femmes-hommes passe avant l'ancienneté du Short.
+    if (!candidates.some((c) => c.gender === wantGender) && fresh.some((c) => c.gender === wantGender)) candidates = fresh;
 
+    // Priorités : environ un tiers d'intervenantes, un intervenant différent de ceux du mois, un thème différent de la semaine.
     const score = (c: (typeof fresh)[number]) =>
-      (weekThemes.has(c.sheet.theme) ? 0 : 2) + (c.speakerId && weekSpeakers.has(c.speakerId) ? 0 : 1);
+      (c.gender === wantGender ? 4 : 0) + (c.speakerId && monthSpeakers.has(c.speakerId) ? 0 : 2) + (weekThemes.has(c.sheet.theme) ? 0 : 1);
     const best = Math.max(...candidates.map(score));
     const top = candidates.filter((c) => score(c) === best);
     pick = top[Math.floor(rand() * top.length)].sheet;
@@ -517,6 +533,19 @@ async function doPlan(db: Db, day: string): Promise<PlanResult> {
   return { day, action: "rediffusion", sheetId: replay.id, movedToQueue };
 }
 
+// Renseigne « femme » ou « homme » pour les intervenants dont la présentation le dit par sa grammaire.
+export async function fillGenders(db: Db): Promise<number> {
+  const rows = await db.select({ id: speakers.id, bio: speakers.qualification }).from(speakers).where(isNull(speakers.gender));
+  let n = 0;
+  for (const r of rows) {
+    const gender = genderFromBio(r.bio);
+    if (!gender) continue;
+    await db.update(speakers).set({ gender }).where(and(eq(speakers.id, r.id), isNull(speakers.gender)));
+    n++;
+  }
+  return n;
+}
+
 // Tâche programmée complète : synchronisation (si la clé est configurée) puis programmation d'aujourd'hui et de demain.
 export async function runScheduledTasks(
   db: Db,
@@ -533,6 +562,7 @@ export async function runScheduledTasks(
     }
   }
   const today = parisDay(now);
+  await fillGenders(db);
   out.plans.push(await planDay(db, today));
   out.plans.push(await planDay(db, addDays(today, 1)));
   if (opts.proposeArticles) {

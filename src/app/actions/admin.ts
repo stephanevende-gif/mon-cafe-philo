@@ -201,6 +201,7 @@ export async function saveSpeaker(fd: FormData) {
     photoUrl,
     portrait: !photoUrl ? null : redraw ? await portraitFromUrl(photoUrl) : previous?.portrait ?? null,
     profileUrl: httpsUrl(str(fd, "presentation", 500)?.replace(/^http:\/\//, "https://") ?? null),
+    gender: fd.get("genre") === "femme" ? ("femme" as const) : fd.get("genre") === "homme" ? ("homme" as const) : null,
     verifiedAt: verified ? previous?.verifiedAt ?? new Date() : null,
     verifiedBy: verified ? previous?.verifiedBy ?? editor.id : null,
   };
@@ -304,20 +305,23 @@ export async function adminRole(fd: FormData) {
 export async function syncNow() {
   await requireEditor();
   const { runScheduledTasks } = await import("@/lib/automation");
-  const { aiEnabled, chooseAuthorBooks, chooseFlatteringFrame, proposeSheet } = await import("@/lib/ai");
+  const { aiEnabled, chooseAuthorBooks, chooseFlatteringFrame, proposeArticles, proposeSheet } = await import("@/lib/ai");
   const r = await runScheduledTasks(db, {
     apiKey: process.env.YOUTUBE_API_KEY,
     playlistId: process.env.YOUTUBE_PLAYLIST_ID || undefined,
     propose: aiEnabled() ? proposeSheet : undefined,
     chooseFrame: aiEnabled() ? (frames) => chooseFlatteringFrame(frames) : undefined,
     chooseBooks: aiEnabled() ? (question, titles) => chooseAuthorBooks(question, titles) : undefined,
+    proposeArticles: aiEnabled() ? (input, domains) => proposeArticles(input, domains) : undefined,
   });
-  revalidatePath("/admin", "layout");
+  revalidatePath("/", "layout");
   const parts: string[] = [];
   if (!process.env.YOUTUBE_API_KEY) parts.push("Clé YouTube manquante : seule la programmation a été faite.");
   else if (r.syncError) parts.push(`Lecture de la playlist impossible : ${r.syncError}`);
   else if (r.sync) parts.push(`${r.sync.newShorts} nouveau(x) Short(s), ${r.sync.queued} en file.`);
   parts.push(...r.plans.map((p) => `${p.day} : ${p.action === "deja_prete" ? "fiche validée prête" : p.action === "tirage" ? "fiche validée tirée au sort" : p.action === "rediffusion" ? "rediffusion programmée" : "fiche de secours"}.`));
+  if (r.articles) parts.push(`${r.articles} fiche(s) complétée(s) par deux articles certifiés.`);
+  if (r.articlesError) parts.push(`Articles : ${r.articlesError}`);
   redirect(`/admin/synchronisation?message=${encodeURIComponent(parts.join(" "))}`);
 }
 

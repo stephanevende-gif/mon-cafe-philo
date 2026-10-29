@@ -9,6 +9,9 @@ import { formatDate } from "@/lib/dates";
 import { cleanTitle } from "@/lib/youtube";
 import { NOTIONS, notionsOf } from "@/lib/notions";
 
+// Les actions de cette page (IA, recherche d'articles) peuvent prendre plusieurs minutes.
+export const maxDuration = 300;
+
 type Props = { params: Promise<{ id: string }>; searchParams: Promise<{ message?: string; jour?: string }> };
 
 export default async function Page({ params, searchParams }: Props) {

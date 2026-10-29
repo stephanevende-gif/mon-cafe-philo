@@ -8,6 +8,9 @@ import { aiEnabled } from "@/lib/ai";
 import { DEFAULT_PLAYLIST } from "@/lib/automation";
 import { formatDate, formatTime } from "@/lib/dates";
 
+// Les actions de cette page (IA, recherche d'articles) peuvent prendre plusieurs minutes.
+export const maxDuration = 300;
+
 type Props = { searchParams: Promise<{ message?: string }> };
 
 function Status({ ok, yes, no }: { ok: boolean; yes: string; no: string }) {

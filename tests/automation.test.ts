@@ -186,6 +186,28 @@ describe("programmation quotidienne", () => {
   });
 });
 
+describe("équilibre des intervenants", () => {
+  it("tire environ un tiers d'intervenantes, sans répéter un intervenant dans le mois", async () => {
+    await ctx.db.delete(sheets);
+    for (let i = 0; i < 12; i++) {
+      const gender = i < 4 ? ("femme" as const) : ("homme" as const);
+      const [sp] = await ctx.db.insert(speakers).values({ fullName: `Personne ${i}`, qualification: "q", gender }).returning();
+      const [v] = await ctx.db.insert(videos).values({ youtubeId: `equilib${String(i).padStart(4, "0")}`, kind: "short", title: `v${i}`, speakerId: sp.id }).returning();
+      await ctx.db.insert(sheets).values({ theme: "la liberté", question: `Q${i}`, shortVideoId: v.id, status: "validee" });
+    }
+    const picked: { gender: string | null; speaker: string }[] = [];
+    for (let i = 0; i < 9; i++) {
+      const r = await planDay(ctx.db, addDays("2028-03-01", i));
+      const s = await ctx.db.query.sheets.findFirst({ where: eq(sheets.id, r.sheetId!) });
+      const v = await ctx.db.query.videos.findFirst({ where: eq(videos.id, s!.shortVideoId!) });
+      const sp = await ctx.db.query.speakers.findFirst({ where: eq(speakers.id, v!.speakerId!) });
+      picked.push({ gender: sp!.gender, speaker: sp!.id });
+    }
+    expect(picked.filter((p) => p.gender === "femme")).toHaveLength(3);
+    expect(new Set(picked.map((p) => p.speaker)).size).toBe(9);
+  });
+});
+
 describe("brouillons IA pour les fiches déjà importées", () => {
   it("complète une fiche à rédiger sans la valider, et ne touche jamais une fiche validée", async () => {
     const [v1] = await ctx.db.insert(videos).values({ youtubeId: "ancienAAAA1", kind: "short", title: "Ancien Short", description: "Sur le courage." }).returning();
