@@ -295,6 +295,7 @@ const ArticleSchema = z.object({
 });
 const ArticlesChoice = z.object({
   articles: z.array(ArticleSchema).describe("Deux articles, un pour chaque branche de l'alternative ; une liste vide si tu n'en trouves pas deux qui conviennent."),
+  remark: z.string().describe("Si la liste n'a pas deux articles : en une phrase, pourquoi les pages lues ne convenaient pas. Sinon, une chaîne vide."),
 });
 export type ArticleProposal = z.infer<typeof ArticleSchema>;
 export interface ArticleSearch {
@@ -303,6 +304,8 @@ export interface ArticleSearch {
   seenUrls: string[];
   // Adresses réellement lues : un article retenu doit avoir été lu en entier.
   readUrls: string[];
+  // Explication de l'IA quand elle ne propose pas deux articles.
+  remark?: string;
   // Consommation de la recherche, pour estimer son coût.
   usage?: { input: number; output: number; searches: number; fetches: number };
 }
@@ -354,7 +357,9 @@ export async function proposeArticles(
       output_config: { effort: "medium", format: betaZodOutputFormat(ArticlesChoice) },
       tools: [
         { type: "web_search_20260209", name: "web_search", max_uses: 10, allowed_domains: domains },
-        { type: "web_fetch_20260209", name: "web_fetch", max_uses: 8, allowed_domains: domains },
+        // Version de lecture sans filtrage par code : le texte entier de la page parvient à l'IA, qui peut ainsi certifier
+        // l'avoir lu en entier.
+        { type: "web_fetch_20250910", name: "web_fetch", max_uses: 8, allowed_domains: domains, max_content_tokens: 20000 },
       ],
       system: `Tu aides les Éditions M-Éditer à compléter la page « Pour aller plus loin » de l'application « Mon café philo ». La question du jour est une alternative entre deux positions.
 Cherche deux articles de presse en ligne, librement accessibles, publiés sur les sites autorisés : le premier penche nettement vers une branche de l'alternative, le second vers l'autre. Un article convient s'il soutient le fond de cette position, même avec d'autres mots, sur un exemple précis ou à propos d'un auteur ; il n'a pas besoin de poser la question telle quelle. Chacun, parce qu'il privilégie une seule branche, se heurte au problème sans le voir : c'est ce qui intéresse le lecteur.
@@ -374,7 +379,7 @@ Ne propose que des articles trouvés dans les résultats de recherche, avec leur
       continue;
     }
     if (response.stop_reason === "refusal") return null;
-    return { articles: response.parsed_output?.articles ?? [], seenUrls, readUrls, usage };
+    return { articles: response.parsed_output?.articles ?? [], remark: response.parsed_output?.remark || undefined, seenUrls, readUrls, usage };
   }
   return null;
 }
