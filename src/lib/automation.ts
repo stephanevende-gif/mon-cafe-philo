@@ -9,6 +9,7 @@ import { getVideos, linkedVideoIds, listPlaylist, type Fetch } from "./youtube-a
 import type { SheetProposal } from "./ai";
 import { cleanTitle } from "./youtube";
 import { genderFromBio } from "./gender";
+import { studentSpeaker } from "./student";
 import { formatNotions } from "./notions";
 import { authorBio, authorLink, isPublisherPage, photoFromProfilePage, bioFromProfilePage, publisherPage } from "./authors";
 import { portraitFromUrl } from "./portrait";
@@ -165,6 +166,17 @@ async function doSync(db: Db, opts: SyncOptions): Promise<SyncReport> {
         { id: short.id, youtubeId: s.id, description: s.description },
         ...(lectureId && lecture ? [{ id: lectureId, youtubeId: lecture.id, description: lecture.description }] : []),
       ], (url, o) => portraitFromUrl(url, fetchImpl, o));
+    }
+
+    // Pas de fiche pour le Short d'un étudiant ou d'un élève (la vidéo reste connue, pour ne pas la reprendre).
+    const [who] = await db
+      .select({ fullName: speakers.fullName, qualification: speakers.qualification })
+      .from(videos)
+      .innerJoin(speakers, eq(speakers.id, videos.speakerId))
+      .where(eq(videos.id, short.id));
+    if (who && studentSpeaker({ ...who, description: s.description })) {
+      report.skipped.push(`« ${s.title} » : intervenant étudiant, pas de fiche`);
+      continue;
     }
 
     // J+1, s'il est encore à venir et libre ; sinon file éditoriale.
@@ -455,14 +467,22 @@ async function doPlan(db: Db, day: string): Promise<PlanResult> {
   const womenShare = known.length ? known.filter((p) => p.gender === "femme").length / known.length : 0;
   const wantGender = womenShare < WOMEN_SHARE ? "femme" : "homme";
 
-  // Candidats : fiches originales validées, avec un Short.
+  // Candidats : fiches originales validées, avec un Short, dont l'intervenant n'est pas étudiant.
   const pool = await db
-    .select({ sheet: sheets, speakerId: videos.speakerId, publishedAt: videos.publishedAt, gender: speakers.gender })
+    .select({
+      sheet: sheets,
+      speakerId: videos.speakerId,
+      publishedAt: videos.publishedAt,
+      gender: speakers.gender,
+      student: { fullName: speakers.fullName, qualification: speakers.qualification, description: videos.description },
+    })
     .from(sheets)
     .innerJoin(videos, eq(videos.id, sheets.shortVideoId))
     .leftJoin(speakers, eq(speakers.id, videos.speakerId))
     .where(and(eq(sheets.status, "validee"), isNull(sheets.replayOf)))
-    .orderBy(asc(sheets.id));
+    .orderBy(asc(sheets.id))
+    // Jamais la fiche d'un étudiant ou d'un élève, même validée.
+    .then((rows) => rows.filter((r) => !studentSpeaker(r.student)));
   if (pool.length === 0) return { day, action: "aucune", movedToQueue };
   const fresh = pool.filter((c) => {
     const last = lastShown.get(c.sheet.id);
