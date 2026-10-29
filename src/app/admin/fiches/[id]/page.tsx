@@ -3,7 +3,7 @@ import { asc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { books, sheets, speakers, videos } from "@/db/schema";
 import { Notice } from "@/components/Notice";
-import { chooseShortPoster, deleteSheet, draftSheetsWithAi, saveSheet } from "@/app/actions/admin";
+import { chooseShortPoster, deleteSheet, draftSheetsWithAi, findArticlesWithAi, saveSheet } from "@/app/actions/admin";
 import { aiEnabled } from "@/lib/ai";
 import { formatDate } from "@/lib/dates";
 import { cleanTitle } from "@/lib/youtube";
@@ -44,10 +44,17 @@ export default async function Page({ params, searchParams }: Props) {
           <span className="hint"> Remplace le titre, le thème, la question et l&apos;approche actuels par un brouillon à relire.</span>
         </form>
       )}
+      {sheet && aiEnabled() && (
+        <form action={findArticlesWithAi}>
+          <input type="hidden" name="id" value={sheet.id} />
+          <button className="btn" type="submit">{sheet.pressArticles?.length ? "Chercher deux autres articles avec l'IA" : "Chercher deux articles avec l'IA"}</button>
+          <span className="hint"> Presse et revues en ligne en accès libre ; environ une minute.</span>
+        </form>
+      )}
       {sheet?.replayOf && <p className="notice ok" role="note">Rediffusion automatique d&apos;une fiche déjà publiée.</p>}
       <form action={saveSheet} className="field-group">
         {sheet && <input type="hidden" name="id" value={sheet.id} />}
-        <label>Jour de publication<input type="date" name="jour" id="jour" defaultValue={sheet?.day ?? sp.jour ?? ""} /><span className="hint">Laisser vide pour une fiche non programmée ou de secours. Le sujet change à minuit, heure de Paris.</span></label>
+        <label>Jour de publication (facultatif)<input type="date" name="jour" id="jour" defaultValue={sheet?.day ?? sp.jour ?? ""} /><span className="hint">À laisser vide : chaque jour, une fiche validée est tirée au sort, jamais deux fois dans l&apos;année. Une date sert seulement à imposer une fiche un jour précis.</span></label>
         <label>Titre<input type="text" name="titre" id="titre" maxLength={200} defaultValue={sheet?.title ?? ""} placeholder="Interrogeons-nous sur…" /></label>
         <fieldset className="notions">
           <legend>Thèmes (trois au plus)</legend>
@@ -74,8 +81,30 @@ export default async function Page({ params, searchParams }: Props) {
           <textarea name="solution" id="solution" maxLength={700} defaultValue={sheet?.solutionQuestion ?? ""} style={{ minHeight: 70 }} placeholder="Quelle attitude adopter (individuelle et collective) pour qu'à la fois nous puissions, d'une part…" />
           <span className="hint">Affichée avant la version 3 du carnet. Elle ne donne jamais la réponse : la solution revient au lecteur.</span>
         </label>
+        <fieldset className="field-group" id="articles">
+          <legend>Deux articles à lire (page « Pour aller plus loin »)</legend>
+          <span className="hint">
+            Deux articles de presse en ligne en accès libre : chacun défend une branche de l&apos;alternative et, faute de voir le problème, s&apos;y heurte.
+            Ouvrez chaque lien avant de valider. La présentation est rédigée par nous : aucune citation de l&apos;article.
+          </span>
+          {[0, 1].map((i) => {
+            const a = sheet?.pressArticles?.[i];
+            return (
+              <div className="stack" key={i} style={{ gap: 6 }}>
+                <label>Article {i + 1} : titre<input type="text" name={`article${i + 1}_titre`} maxLength={300} defaultValue={a?.title ?? ""} /></label>
+                <label>Adresse<input type="url" name={`article${i + 1}_url`} maxLength={500} defaultValue={a?.url ?? ""} placeholder="https://theconversation.com/…" /></label>
+                {a?.url && <a className="small" href={a.url} target="_blank" rel="noopener noreferrer">Ouvrir l&apos;article →</a>}
+                <label>Média<input type="text" name={`article${i + 1}_source`} maxLength={120} defaultValue={a?.source ?? ""} /></label>
+                <label>Auteur (facultatif)<input type="text" name={`article${i + 1}_auteur`} maxLength={120} defaultValue={a?.author ?? ""} /></label>
+                <label>Date (facultatif)<input type="date" name={`article${i + 1}_date`} defaultValue={a?.date ?? ""} /></label>
+                <label>Branche de l&apos;alternative défendue<input type="text" name={`article${i + 1}_position`} maxLength={200} defaultValue={a?.side ?? ""} /></label>
+                <label>Présentation en deux phrases<textarea name={`article${i + 1}_descriptif`} maxLength={700} defaultValue={a?.description ?? ""} style={{ minHeight: 70 }} /></label>
+              </div>
+            );
+          })}
+        </fieldset>
         <fieldset className="field-group">
-          <legend>Quels philosophes lire pour approfondir la question ? (fin de la page « Je suis »)</legend>
+          <legend>Quels philosophes lire pour approfondir la question ? (page « Pour aller plus loin »)</legend>
           <span className="hint">Trois philosophes, chacun avec un de ses livres et deux phrases de présentation. Vérifiez que chaque livre existe et qu&apos;il est bien de cet auteur.</span>
           {[0, 1, 2].map((i) => (
             <div className="stack" key={i} style={{ gap: 6 }}>

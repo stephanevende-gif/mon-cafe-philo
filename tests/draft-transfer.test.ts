@@ -4,6 +4,8 @@ import { applyDrafts, exportDrafts } from "@/lib/draft-transfer";
 import { sheets, speakers, videos } from "@/db/schema";
 import { testDb } from "./helpers";
 
+const byIdAfter = (rows: (typeof sheets.$inferSelect)[], id: string) => rows.find((r) => r.id === id);
+
 let ctx: Awaited<ReturnType<typeof testDb>>;
 beforeAll(async () => {
   ctx = await testDb();
@@ -42,10 +44,15 @@ describe("transfert des brouillons IA vers la base en ligne", () => {
         { id: "00000000-0000-4000-8000-000000000001", fullName: "Auteur Nouveau", qualification: "Philosophe.", qualificationSource: null, photoUrl: null, portrait: null, profileUrl: null },
       ],
       videoSpeakers: [{ videoId: v1.id, speakerId: "00000000-0000-4000-8000-000000000001" }],
+      articles: [waiting, validated].map((s) => ({
+        id: s.id,
+        pressArticles: [{ title: "Article", source: "The Conversation", url: "https://theconversation.com/a-1", side: "Oui", description: "Deux phrases." }],
+      })),
     };
 
     const report = await applyDrafts(db, bundle);
-    expect(report).toEqual({ sheets: 1, speakers: 1, videos: 1 });
+    expect(report).toEqual({ sheets: 1, speakers: 1, videos: 1, articles: 2 });
+    expect(byIdAfter(await db.select().from(sheets), edited.id)?.pressArticles).toBeNull();
 
     const after = await db.select().from(sheets);
     const byId = new Map(after.map((s) => [s.id, s]));
@@ -56,10 +63,11 @@ describe("transfert des brouillons IA vers la base en ligne", () => {
     expect(v?.speakerId).toBe("00000000-0000-4000-8000-000000000001");
 
     // Un second passage ne change plus rien, et l'export reprend la fiche rédigée.
-    expect(await applyDrafts(db, bundle)).toEqual({ sheets: 0, speakers: 0, videos: 0 });
+    expect(await applyDrafts(db, bundle)).toEqual({ sheets: 0, speakers: 0, videos: 0, articles: 0 });
     const out = await exportDrafts(db);
     expect(out.sheets.map((s) => s.id)).toEqual([waiting.id]);
     expect(out.speakers.map((s) => s.fullName)).toEqual(["Auteur Nouveau"]);
+    expect(out.articles?.map((a) => a.id).sort()).toEqual([waiting.id, validated.id].sort());
     expect(await db.select().from(speakers)).toHaveLength(1);
   });
 });

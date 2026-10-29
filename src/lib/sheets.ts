@@ -2,7 +2,7 @@ import { and, asc, desc, eq, gte, ilike, isNotNull, isNull, lte, or, sql } from 
 import { NOTIONS, NOTION_SEPARATOR, notionsOf } from "./notions";
 import { alias } from "drizzle-orm/pg-core";
 import type { Db } from "@/db";
-import { books, sheets, speakers, videos, type Book, type Sheet, type Speaker, type Video } from "@/db/schema";
+import { books, listeningNotes, notebookEntries, sheets, speakers, videos, type Book, type Sheet, type Speaker, type Video } from "@/db/schema";
 
 export interface SheetDetails {
   sheet: Sheet;
@@ -21,6 +21,14 @@ function dayHash(day: string): number {
   let h = 0;
   for (const c of day) h = (h * 31 + c.charCodeAt(0)) >>> 0;
   return h;
+}
+
+// Hachage bien mélangé (FNV-1a puis brassage) : deux clés voisines donnent des valeurs sans rapport.
+function mixHash(s: string): number {
+  let h = 2166136261;
+  for (const c of s) h = Math.imul(h ^ c.charCodeAt(0), 16777619) >>> 0;
+  h = Math.imul(h ^ (h >>> 16), 2246822507) >>> 0;
+  return Math.imul(h ^ (h >>> 13), 3266489909) >>> 0;
 }
 
 export async function getSheetOfTheDay(db: Db, day: string): Promise<{ sheet: Sheet; fallback: boolean } | null> {
@@ -124,3 +132,29 @@ export async function archiveFacets(db: Db, today: string) {
   return { themes: NOTIONS.filter((n) => used.has(n)), people };
 }
 
+
+// Un lecteur qui a déjà travaillé la fiche du jour (une deuxième année d'abonnement, par exemple) reçoit à la place
+// une fiche validée qu'il n'a jamais travaillée. Le choix est stable sur la journée et propre à chaque lecteur.
+// Seul compte le travail des jours précédents : écrire aujourd'hui sur la fiche reçue ne la fait pas changer.
+export async function sheetForReader(db: Db, userId: string, sheet: Sheet, today: string): Promise<Sheet> {
+  const before = (col: typeof notebookEntries.createdAt | typeof listeningNotes.createdAt) =>
+    sql`(${col} at time zone 'Europe/Paris')::date < ${today}::date`;
+  const root = sql<string>`coalesce(${sheets.replayOf}, ${sheets.id})`;
+  const [fromNotebook, fromNotes] = await Promise.all([
+    db.select({ root }).from(notebookEntries).innerJoin(sheets, eq(sheets.id, notebookEntries.sheetId)).where(and(eq(notebookEntries.userId, userId), before(notebookEntries.createdAt))),
+    db.select({ root }).from(listeningNotes).innerJoin(sheets, eq(sheets.id, listeningNotes.sheetId)).where(and(eq(listeningNotes.userId, userId), before(listeningNotes.createdAt))),
+  ]);
+  const worked = new Set([...fromNotebook, ...fromNotes].map((r) => r.root));
+  if (!worked.has(sheet.replayOf ?? sheet.id)) return sheet;
+
+  const pool = await db
+    .select({ id: sheets.id })
+    .from(sheets)
+    .where(and(eq(sheets.status, "validee"), isNull(sheets.replayOf), isNotNull(sheets.shortVideoId)));
+  const open = pool.filter((p) => !worked.has(p.id));
+  if (open.length === 0) return sheet;
+  // Tirage par hachage : une fiche validée plus tard dans la journée ne change le choix que si elle l'emporte.
+  const key = (id: string) => mixHash(`${userId}|${today}|${id}`);
+  const best = open.reduce((a, b) => (key(b.id) < key(a.id) ? b : a));
+  return (await getSheetById(db, best.id)) ?? sheet;
+}

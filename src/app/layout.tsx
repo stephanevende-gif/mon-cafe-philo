@@ -27,6 +27,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <span className="by">Une application des Éditions M-Éditer</span>
           </Link>
           <nav className="top-links" aria-label="Navigation principale">
+            {user && <Link href="/mes-fiches">Mes fiches</Link>}
             <Link href="/archives">Archives</Link>
             {isEditor(user) && <Link href="/admin">Administration</Link>}
             {user ? <Link href="/compte">Mon compte</Link> : <Link href="/connexion">Connexion</Link>}

@@ -51,7 +51,7 @@ async function main() {
   if (existsSync(DRAFTS)) {
     const bundle = JSON.parse(gunzipSync(readFileSync(DRAFTS)).toString("utf8")) as DraftBundle;
     const r = await applyDrafts(db, bundle);
-    console.log(`Brouillons IA : ${r.sheets} fiches complétées, ${r.speakers} intervenants ajoutés, ${r.videos} vidéos reliées.`);
+    console.log(`Brouillons IA : ${r.sheets} fiches complétées, ${r.speakers} intervenants ajoutés, ${r.videos} vidéos reliées, ${r.articles} fiches avec leurs deux articles.`);
   }
 
   const email = process.env.ADMIN_EMAIL?.trim().toLowerCase();

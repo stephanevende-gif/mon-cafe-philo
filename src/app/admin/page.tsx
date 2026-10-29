@@ -38,15 +38,15 @@ export default async function Page() {
             const s = byDay.get(d);
             const ok = s?.status === "validee";
             return (
-              <div key={d} className={ok ? "" : "missing"}>
+              <div key={d} className={s && !ok ? "missing" : ""}>
                 <b>{formatDayLong(d).replace(/ \d{4}$/, "")}</b>
                 <br />
-                {s ? <Link href={`/admin/fiches/${s.id}`}>{ok ? s.question : `À valider : ${s.question}`}</Link> : <Link href={`/admin/fiches/nouvelle?jour=${d}`}>Aucune fiche · programmer</Link>}
+                {s ? <Link href={`/admin/fiches/${s.id}`}>{ok ? s.question : `À valider : ${s.question}`}</Link> : <Link href={`/admin/fiches/nouvelle?jour=${d}`}>Tirage au sort automatique · imposer une fiche</Link>}
               </div>
             );
           })}
         </div>
-        <p className="small muted">Un jour sans fiche validée affichera une fiche de secours.</p>
+        <p className="small muted">Chaque nuit, le jour même et le lendemain reçoivent une fiche validée tirée au sort, jamais montrée depuis un an. Une fiche « à valider » à une date est remise en file si elle n&apos;est pas validée à temps.</p>
       </section>
     </div>
   );

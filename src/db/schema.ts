@@ -33,6 +33,20 @@ export interface AuthorBook {
   cover?: string;
 }
 
+// Article de presse en ligne, librement accessible, qui défend l'une des deux branches de l'alternative.
+// Le résumé est rédigé pour l'application : aucun passage de l'article n'est reproduit.
+export interface PressArticle {
+  title: string;
+  source: string;
+  url: string;
+  author?: string;
+  date?: string;
+  // La branche de l'alternative que l'article choisit.
+  side: string;
+  // Deux phrases : ce que l'article soutient, puis ce qu'il laisse de côté du problème.
+  description: string;
+}
+
 export const roleEnum = pgEnum("role", ["membre", "editeur", "admin"]);
 export const tokenPurposeEnum = pgEnum("token_purpose", ["verification", "reinitialisation"]);
 export const accessKindEnum = pgEnum("access_kind", ["essai", "paiement", "attribution"]);
@@ -169,6 +183,8 @@ export const sheets = pgTable(
     readings: jsonb("readings").$type<Reading[]>(),
     // Bibliographie de l'auteur aux Éditions M-Éditer (jusqu'à trois livres).
     authorBooks: jsonb("author_books").$type<AuthorBook[]>(),
+    // Page « Pour aller plus loin » : deux articles de presse en ligne qui prennent chacun une branche de l'alternative.
+    pressArticles: jsonb("press_articles").$type<PressArticle[]>(),
     shortVideoId: uuid("short_video_id").references(() => videos.id, { onDelete: "set null" }),
     lectureVideoId: uuid("lecture_video_id").references(() => videos.id, { onDelete: "set null" }),
     bookId: uuid("book_id").references(() => books.id, { onDelete: "set null" }),

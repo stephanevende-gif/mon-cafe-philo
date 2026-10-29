@@ -1,4 +1,5 @@
-import { and, desc, eq, gte, inArray, isNotNull, isNull, lt, ne, sql } from "drizzle-orm";
+import type { ProposeArticles } from "./press";
+import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, lt, ne, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import type { Db } from "@/db";
 import { sheets, speakers, syncRuns, videos } from "@/db/schema";
@@ -16,7 +17,7 @@ import { authorBibliography, type ChooseBooks } from "./publisher-books";
 export const DEFAULT_PLAYLIST = "PL2d4vA4vfs79RPBnT3PFdOjyXaWPdquGv";
 const SHORT_MAX = 180;
 const LECTURE_MIN = 180;
-const NO_REPEAT_DAYS = 120; // pas de répétition à moins de 4 mois
+const NO_REPEAT_DAYS = 365; // une fiche ne revient pas avant un an
 const DIVERSITY_DAYS = 7;
 // Rediffusions : deux tiers de fiches anciennes, un tiers de fiches récentes (Short publié depuis moins d'un an).
 const RECENT_DAYS = 365;
@@ -380,7 +381,7 @@ export async function attachAuthor(
 
 export interface PlanResult {
   day: string;
-  action: "deja_prete" | "rediffusion" | "aucune";
+  action: "deja_prete" | "tirage" | "rediffusion" | "aucune";
   sheetId?: string;
   movedToQueue?: string;
 }
@@ -394,11 +395,19 @@ function seeded(day: string): () => number {
   };
 }
 
-// Garantit qu'une fiche validée est prête pour le jour donné. Sans nouveau Short validé,
-// une fiche déjà validée est rediffusée, en évitant les répétitions rapprochées et en variant thèmes et intervenants.
+// Garantit qu'une fiche validée est prête pour le jour donné. Sans fiche validée à cette date, une fiche validée
+// est tirée au sort, jamais montrée depuis un an (ni programmée dans l'année qui vient), en variant thèmes et intervenants.
+// Une fiche encore jamais montrée prend simplement ce jour ; une fiche déjà montrée est rediffusée (copie liée à l'originale).
+// Si toutes ont été montrées dans l'année, la fiche montrée il y a le plus longtemps revient.
 export function planDay(db: Db, day: string): Promise<PlanResult> {
   return logRun(db, "planification", () => doPlan(db, day), (r) =>
-    r.action === "deja_prete" ? `${r.day} : fiche validée prête.` : r.action === "rediffusion" ? `${r.day} : rediffusion programmée${r.movedToQueue ? " (fiche non validée replacée en file)" : ""}.` : `${r.day} : aucune fiche disponible, la fiche de secours sera servie.`,
+    r.action === "deja_prete"
+      ? `${r.day} : fiche validée prête.`
+      : r.action === "tirage"
+        ? `${r.day} : fiche validée tirée au sort${r.movedToQueue ? " (fiche non validée replacée en file)" : ""}.`
+        : r.action === "rediffusion"
+          ? `${r.day} : rediffusion programmée${r.movedToQueue ? " (fiche non validée replacée en file)" : ""}.`
+          : `${r.day} : aucune fiche validée, la fiche de secours sera servie.`,
   );
 }
 
@@ -413,14 +422,19 @@ async function doPlan(db: Db, day: string): Promise<PlanResult> {
     movedToQueue = current.id;
   }
 
-  const since = addDays(day, -NO_REPEAT_DAYS);
-  const recent = await db
+  // Toutes les diffusions, passées et déjà programmées, ramenées à leur fiche d'origine.
+  const shown = await db
     .select({ id: sheets.id, replayOf: sheets.replayOf, theme: sheets.theme, day: sheets.day, shortVideoId: sheets.shortVideoId })
     .from(sheets)
-    .where(and(isNotNull(sheets.day), gte(sheets.day, since), lt(sheets.day, day)));
-  const recentRoots = new Set(recent.map((r) => r.replayOf ?? r.id));
+    .where(and(isNotNull(sheets.day), ne(sheets.day, day)));
+  const lastShown = new Map<string, string>();
+  for (const r of shown) {
+    const root = r.replayOf ?? r.id;
+    if (!lastShown.has(root) || r.day! > lastShown.get(root)!) lastShown.set(root, r.day!);
+  }
+  const since = addDays(day, -NO_REPEAT_DAYS);
   const weekStart = addDays(day, -DIVERSITY_DAYS);
-  const lastWeek = recent.filter((r) => r.day! >= weekStart);
+  const lastWeek = shown.filter((r) => r.day! >= weekStart && r.day! < day);
   const weekThemes = new Set(lastWeek.map((r) => r.theme));
   const weekShorts = lastWeek.map((r) => r.shortVideoId).filter((x): x is string => !!x);
   const weekSpeakers = new Set(
@@ -429,30 +443,51 @@ async function doPlan(db: Db, day: string): Promise<PlanResult> {
       : [],
   );
 
-  // Candidats : fiches originales validées, avec un Short, déjà publiées au moins une fois.
+  // Candidats : fiches originales validées, avec un Short.
   const pool = await db
     .select({ sheet: sheets, speakerId: videos.speakerId, publishedAt: videos.publishedAt })
     .from(sheets)
     .innerJoin(videos, eq(videos.id, sheets.shortVideoId))
-    .where(and(eq(sheets.status, "validee"), isNull(sheets.replayOf), isNotNull(sheets.day), lt(sheets.day, day)))
-    .orderBy(desc(sheets.day));
-  const fresh = pool.filter((c) => !recentRoots.has(c.sheet.id));
-  if (fresh.length === 0) return { day, action: "aucune", movedToQueue };
+    .where(and(eq(sheets.status, "validee"), isNull(sheets.replayOf)))
+    .orderBy(asc(sheets.id));
+  if (pool.length === 0) return { day, action: "aucune", movedToQueue };
+  const fresh = pool.filter((c) => {
+    const last = lastShown.get(c.sheet.id);
+    return !last || last < since;
+  });
 
-  // Tirage : une fois sur trois parmi les fiches récentes, deux fois sur trois parmi les anciennes
-  // (si l'un des deux groupes est vide, on prend dans l'autre).
-  const rand = seeded(day);
-  const recentFrom = addDays(day, -RECENT_DAYS);
-  const isRecent = (c: (typeof fresh)[number]) => !!c.publishedAt && parisDay(c.publishedAt) >= recentFrom;
-  const wantRecent = rand() < RECENT_SHARE;
-  const group = fresh.filter((c) => isRecent(c) === wantRecent);
-  const candidates = group.length ? group : fresh;
+  let pick: (typeof pool)[number]["sheet"];
+  if (fresh.length === 0) {
+    // Moins de fiches validées que de jours dans l'année : la plus anciennement montrée revient, jamais une fiche à venir.
+    const past = pool.filter((c) => lastShown.get(c.sheet.id)! < day);
+    if (past.length === 0) return { day, action: "aucune", movedToQueue };
+    pick = past.reduce((a, b) => (lastShown.get(b.sheet.id)! < lastShown.get(a.sheet.id)! ? b : a)).sheet;
+  } else {
+    // Tirage : une fois sur trois parmi les Shorts récents, deux fois sur trois parmi les anciens
+    // (si l'un des deux groupes est vide, on prend dans l'autre).
+    const rand = seeded(day);
+    const recentFrom = addDays(day, -RECENT_DAYS);
+    const isRecent = (c: (typeof fresh)[number]) => !!c.publishedAt && parisDay(c.publishedAt) >= recentFrom;
+    const wantRecent = rand() < RECENT_SHARE;
+    const group = fresh.filter((c) => isRecent(c) === wantRecent);
+    const candidates = group.length ? group : fresh;
 
-  const score = (c: (typeof fresh)[number]) =>
-    (weekThemes.has(c.sheet.theme) ? 0 : 2) + (c.speakerId && weekSpeakers.has(c.speakerId) ? 0 : 1);
-  const best = Math.max(...candidates.map(score));
-  const top = candidates.filter((c) => score(c) === best);
-  const pick = top[Math.floor(rand() * top.length)].sheet;
+    const score = (c: (typeof fresh)[number]) =>
+      (weekThemes.has(c.sheet.theme) ? 0 : 2) + (c.speakerId && weekSpeakers.has(c.speakerId) ? 0 : 1);
+    const best = Math.max(...candidates.map(score));
+    const top = candidates.filter((c) => score(c) === best);
+    pick = top[Math.floor(rand() * top.length)].sheet;
+  }
+
+  if (!pick.day) {
+    // Première diffusion : la fiche prend ce jour, sans copie.
+    const done = await db
+      .update(sheets)
+      .set({ day, updatedAt: new Date() })
+      .where(and(eq(sheets.id, pick.id), isNull(sheets.day)))
+      .returning({ id: sheets.id });
+    if (done.length) return { day, action: "tirage", sheetId: pick.id, movedToQueue };
+  }
 
   const [replay] = await db
     .insert(sheets)
@@ -465,6 +500,8 @@ async function doPlan(db: Db, day: string): Promise<PlanResult> {
       problem: pick.problem,
       solutionQuestion: pick.solutionQuestion,
       readings: pick.readings,
+      authorBooks: pick.authorBooks,
+      pressArticles: pick.pressArticles,
       shortVideoId: pick.shortVideoId,
       lectureVideoId: pick.lectureVideoId,
       bookId: pick.bookId,
@@ -483,10 +520,10 @@ async function doPlan(db: Db, day: string): Promise<PlanResult> {
 // Tâche programmée complète : synchronisation (si la clé est configurée) puis programmation d'aujourd'hui et de demain.
 export async function runScheduledTasks(
   db: Db,
-  opts: Omit<SyncOptions, "apiKey"> & { apiKey?: string; chooseFrame?: ChooseFrame; chooseBooks?: ChooseBooks },
+  opts: Omit<SyncOptions, "apiKey"> & { apiKey?: string; chooseFrame?: ChooseFrame; chooseBooks?: ChooseBooks; proposeArticles?: ProposeArticles },
 ) {
   const now = opts.now ?? new Date();
-  const out: { sync?: SyncReport; syncError?: string; plans: PlanResult[]; postersError?: string } = { plans: [] };
+  const out: { sync?: SyncReport; syncError?: string; plans: PlanResult[]; postersError?: string; articles?: number; articlesError?: string } = { plans: [] };
   if (opts.apiKey) {
     try {
       out.sync = await syncPlaylist(db, { ...opts, apiKey: opts.apiKey, now });
@@ -498,6 +535,17 @@ export async function runScheduledTasks(
   const today = parisDay(now);
   out.plans.push(await planDay(db, today));
   out.plans.push(await planDay(db, addDays(today, 1)));
+  if (opts.proposeArticles) {
+    // Les deux articles de presse, certifiés par lecture, pour la fiche d'aujourd'hui et celle de demain.
+    try {
+      const { fillArticles } = await import("./press");
+      const ids = out.plans.map((p) => p.sheetId).filter((x): x is string => !!x);
+      const results = await Promise.all(ids.map((id) => fillArticles(db, [id], opts.proposeArticles!)));
+      out.articles = results.reduce((n, r) => n + r.done, 0);
+    } catch (e) {
+      out.articlesError = (e as Error).message;
+    }
+  }
   try {
     await postersForDays(db, [today, addDays(today, 1)], { choose: opts.chooseFrame, fetchImpl: opts.fetchImpl });
     await fillBibliographies(db, { days: [today, addDays(today, 1)], choose: opts.chooseBooks, fetchImpl: opts.fetchImpl });
