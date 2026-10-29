@@ -232,15 +232,22 @@ const CoverChoice = z.object({
 });
 
 // Couverture d'un livre conseillé : l'IA retient, parmi plusieurs éditions réelles, la plus digne de l'œuvre.
-export async function chooseBookCover(covers: Buffer[], r: { philosopher: string; book: string }, client = defaultClient()): Promise<number | null> {
+export async function chooseBookCover(
+  covers: Buffer[],
+  r: { philosopher: string; book: string; foreign?: boolean },
+  client = defaultClient(),
+): Promise<number | null> {
+  const language = r.foreign
+    ? "Aucune édition française n'a de couverture : une édition étrangère sérieuse du même livre convient."
+    : "une édition en langue étrangère,";
   const response = await client.beta.messages.parse({
     model: "claude-opus-5-5",
     max_tokens: 500,
     betas: ["server-side-fallback-2026-07-01"],
     fallbacks: "default",
     output_config: { effort: "low", format: betaZodOutputFormat(CoverChoice) },
-    system: `Tu aides les Éditions M-Éditer à illustrer une lecture conseillée par la couverture d'une édition réelle du livre. Choisis la couverture qui convient le mieux à un public adulte qui veut lire l'œuvre : une édition française sérieuse et soignée (collection de poche ou de philosophie), dont la couverture montre bien le titre et l'auteur.
-Écarte : une adaptation (manga, bande dessinée, version jeunesse, résumé, guide de lecture), une édition en langue étrangère, une couverture d'un autre livre ou d'un autre auteur, un exemplaire abîmé ou couvert d'étiquettes et de tampons de bibliothèque, une image floue ou illisible. Si aucune ne convient, réponds 0.`,
+    system: `Tu aides les Éditions M-Éditer à illustrer une lecture conseillée par la couverture d'une édition réelle du livre. Choisis la couverture qui convient le mieux à un public adulte qui veut lire l'œuvre : une édition sérieuse et soignée (de préférence française, collection de poche ou de philosophie), dont la couverture montre bien le titre et l'auteur.
+${r.foreign ? `${language}\n` : ""}Écarte : une adaptation (manga, bande dessinée, version jeunesse, résumé, guide de lecture), ${r.foreign ? "" : `${language} `}une couverture d'un autre livre ou d'un autre auteur, un exemplaire abîmé ou couvert d'étiquettes et de tampons de bibliothèque, une image floue ou illisible. Si aucune ne convient, réponds 0.`,
     messages: [
       {
         role: "user",
@@ -258,6 +265,25 @@ export async function chooseBookCover(covers: Buffer[], r: { philosopher: string
   if (response.stop_reason === "refusal") return null;
   const n = response.parsed_output?.image;
   return n && n >= 1 && n <= covers.length ? n - 1 : null;
+}
+
+const OriginalTitleAnswer = z.object({
+  title: z.string().nullable().describe("Titre original exact de l'œuvre, dans sa langue d'origine, ou null si tu n'en es pas certain ou si l'œuvre a été écrite en français."),
+});
+
+// Titre original d'un livre conseillé (pour trouver la couverture d'une édition étrangère) ; jamais deviné.
+export async function originalBookTitle(r: { philosopher: string; book: string }, client = defaultClient()): Promise<string | null> {
+  const response = await client.beta.messages.parse({
+    model: "claude-opus-5-5",
+    max_tokens: 300,
+    betas: ["server-side-fallback-2026-07-01"],
+    fallbacks: "default",
+    output_config: { effort: "low", format: betaZodOutputFormat(OriginalTitleAnswer) },
+    system: "Tu donnes le titre original d'une œuvre publiée en traduction française. Réponds null si tu n'es pas certain du titre exact.",
+    messages: [{ role: "user", content: `« ${r.book} », de ${r.philosopher}.` }],
+  });
+  if (response.stop_reason === "refusal") return null;
+  return response.parsed_output?.title?.trim() || null;
 }
 
 const BooksChoice = z.object({

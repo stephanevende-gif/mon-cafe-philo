@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { saveListeningNote } from "@/app/actions/notebook";
 import type { ListeningNote } from "@/db/schema";
 
-// Bloc-notes d'écoute, à côté de la conférence : l'auditeur relève la thèse, les arguments, un exemple ou une objection.
+// Bloc-notes d'écoute, à côté de la vidéo courte : l'auditeur relève la thèse, les arguments, un exemple ou une objection.
 // Les notes s'enregistrent d'elles-mêmes dans le carnet, quelques instants après la frappe.
 
 const FIELDS: { key: keyof ListeningNote; label: string; placeholder: string; rows: number }[] = [

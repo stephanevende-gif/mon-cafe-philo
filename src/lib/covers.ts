@@ -2,7 +2,8 @@ import sharp from "sharp";
 import type { Reading } from "@/db/schema";
 
 // Couverture d'un livre conseillé : celle qu'Open Library associe au titre et à l'auteur, de préférence
-// d'une édition française. Elle est réduite et gardée dans l'application (JPEG en data URL).
+// d'une édition française. Sans aucune couverture d'édition française, celle d'une édition étrangère convient,
+// cherchée au besoin sous le titre original (« The Poverty of Historicism » pour « Misère de l'historicisme »). Elle est réduite et gardée dans l'application (JPEG en data URL).
 // Si aucune couverture n'est trouvée, le livre reste sans image : on n'en fabrique jamais.
 // Quand plusieurs éditions existent, l'IA écarte les adaptations (manga, jeunesse), les éditions étrangères
 // et les exemplaires abîmés, et retient la plus sobre ; sans IA, la première édition française trouvée.
@@ -47,8 +48,8 @@ async function patient(fetchImpl: typeof fetch, url: string, tries = 3): Promise
   return null;
 }
 
-async function search(r: Reading, fetchImpl: typeof fetch, french: boolean): Promise<number[]> {
-  const params = new URLSearchParams({ title: r.book, author: r.philosopher, fields: "title,author_name,cover_i", limit: "10" });
+async function search(r: Reading, fetchImpl: typeof fetch, french: boolean, title = r.book): Promise<number[]> {
+  const params = new URLSearchParams({ title, author: r.philosopher, fields: "title,author_name,cover_i", limit: "10" });
   if (french) params.set("language", "fre");
   const res = await patient(fetchImpl, `https://openlibrary.org/search.json?${params}`);
   if (!res?.ok) return [];
@@ -62,7 +63,11 @@ export async function storeCover(image: Buffer): Promise<string> {
 }
 
 // Choisit parmi les couvertures candidates : son numéro (à partir de 0), ou null si aucune ne convient.
-export type ChooseCover = (covers: Buffer[], r: Reading) => Promise<number | null>;
+// foreign : aucune édition française n'a de couverture, une édition étrangère est donc acceptée.
+export type ChooseCover = (covers: Buffer[], r: Reading, foreign: boolean) => Promise<number | null>;
+
+// Titre original de l'œuvre, quand il diffère du titre français ; null sinon.
+export type OriginalTitle = (r: Reading) => Promise<string | null>;
 
 const CANDIDATES = 5;
 
@@ -72,10 +77,20 @@ async function download(id: number, fetchImpl: typeof fetch): Promise<Buffer | n
 }
 
 // Renvoie la couverture prête à afficher, ou null.
-export async function findCover(r: Reading, fetchImpl: typeof fetch = fetch, choose: ChooseCover | null = null): Promise<string | null> {
+export async function findCover(
+  r: Reading,
+  fetchImpl: typeof fetch = fetch,
+  choose: ChooseCover | null = null,
+  original: OriginalTitle | null = null,
+): Promise<string | null> {
   try {
     const french = await search(r, fetchImpl, true);
-    const ids = [...new Set([...french, ...(french.length >= CANDIDATES ? [] : await search(r, fetchImpl, false))])];
+    let ids = [...new Set([...french, ...(french.length >= CANDIDATES ? [] : await search(r, fetchImpl, false))])];
+    if (!ids.length && original) {
+      const title = (await original(r))?.trim();
+      if (title && title.toLowerCase() !== r.book.toLowerCase()) ids = await search(r, fetchImpl, false, title);
+    }
+    const foreign = french.length === 0;
     if (!choose) {
       for (const id of ids) {
         const image = await download(id, fetchImpl);
@@ -90,7 +105,7 @@ export async function findCover(r: Reading, fetchImpl: typeof fetch = fetch, cho
       if (image) images.push(await storeCover(image).then((u) => Buffer.from(u.split(",")[1], "base64")));
     }
     if (!images.length) return null;
-    const pick = await choose(images, r);
+    const pick = await choose(images, r, foreign);
     return pick !== null && pick >= 0 && pick < images.length ? `data:image/jpeg;base64,${images[pick].toString("base64")}` : null;
   } catch {
     return null;
@@ -98,6 +113,11 @@ export async function findCover(r: Reading, fetchImpl: typeof fetch = fetch, cho
 }
 
 // Ajoute une couverture aux lectures qui n'en ont pas encore.
-export async function withCovers(list: Reading[], fetchImpl: typeof fetch = fetch, choose: ChooseCover | null = null): Promise<Reading[]> {
-  return Promise.all(list.map(async (r) => (r.cover ? r : { ...r, cover: (await findCover(r, fetchImpl, choose)) ?? undefined })));
+export async function withCovers(
+  list: Reading[],
+  fetchImpl: typeof fetch = fetch,
+  choose: ChooseCover | null = null,
+  original: OriginalTitle | null = null,
+): Promise<Reading[]> {
+  return Promise.all(list.map(async (r) => (r.cover ? r : { ...r, cover: (await findCover(r, fetchImpl, choose, original)) ?? undefined })));
 }

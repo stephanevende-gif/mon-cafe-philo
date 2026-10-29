@@ -14,7 +14,7 @@ import { formatNotions, isNotion } from "@/lib/notions";
 import { portraitFromUrl } from "@/lib/portrait";
 import { cleanReadings, keepCovers } from "@/lib/readings";
 import { cleanTypedArticles } from "@/lib/press";
-import { withCovers } from "@/lib/covers";
+import { withCovers, type ChooseCover, type OriginalTitle } from "@/lib/covers";
 import { fillPosters, replaceShortPoster } from "@/lib/posters";
 
 const UUID = /^[0-9a-f-]{36}$/;
@@ -107,7 +107,7 @@ export async function saveSheet(fd: FormData) {
   // Les couvertures déjà trouvées sont gardées ; un livre nouveau reçoit la sienne s'il en existe une.
   const before = id ? await db.query.sheets.findFirst({ where: eq(sheets.id, id) }) : null;
   const typed = readingsFrom(fd);
-  const readings = typed ? await withCovers(keepCovers(typed, before?.readings), fetch, await coverChooser()) : null;
+  const readings = typed ? await withCovers(keepCovers(typed, before?.readings), fetch, ...(await coverHelpers())) : null;
 
   const values = {
     day,
@@ -174,9 +174,10 @@ async function completeValidated(id: string) {
   ]);
 }
 
-async function coverChooser() {
-  const { aiEnabled, chooseBookCover } = await import("@/lib/ai");
-  return aiEnabled() ? (covers: Buffer[], r: { philosopher: string; book: string }) => chooseBookCover(covers, r) : null;
+async function coverHelpers(): Promise<[ChooseCover | null, OriginalTitle | null]> {
+  const { aiEnabled, chooseBookCover, originalBookTitle } = await import("@/lib/ai");
+  if (!aiEnabled()) return [null, null];
+  return [(covers, r, foreign) => chooseBookCover(covers, { ...r, foreign }), (r) => originalBookTitle(r)];
 }
 
 async function frameChooser() {
