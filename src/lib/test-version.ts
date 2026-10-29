@@ -8,7 +8,7 @@ import { sheets, type Sheet } from "@/db/schema";
 // Liste vide : fonctionnement normal (question du jour tirée au sort, archives complètes).
 export const TEST_SHEET_IDS = [
   "11421fdb-5d01-42e5-b854-d7930e6a786c", // Jean-Luc Nativelle : « Confier nos jugements aux machines… »
-  "61f03b75-ed57-4846-bda7-03f6e1ee6895", // Jean-Marie Frey : « L'histoire est-elle un chaos de passions absurdes… »
+  "424bbe7c-a46a-4b2b-a2bc-92511b13a3db", // Jean-Marie Frey : Short « Quand le hasard joue aux dés avec nos existences… »
 ];
 
 // Les questions de la version de test, dans l'ordre de la liste ; vide hors version de test.

@@ -24,7 +24,7 @@ export default async function Page({ params, searchParams }: Props) {
   const [vids, bks] = await Promise.all([
     db.select({ id: videos.id, title: videos.title, kind: videos.kind, speaker: speakers.fullName, verified: speakers.verifiedAt })
       .from(videos).leftJoin(speakers, eq(speakers.id, videos.speakerId)).orderBy(asc(videos.title)),
-    db.select().from(books).orderBy(asc(books.title)),
+    db.select().from(books).orderBy(asc(books.author), asc(books.title)),
   ]);
   const posterOf = async (vid: string | null | undefined) =>
     vid ? (await db.select({ id: videos.id, poster: videos.poster }).from(videos).where(eq(videos.id, vid)))[0] ?? null : null;
@@ -151,7 +151,7 @@ export default async function Page({ params, searchParams }: Props) {
           Livre des Éditions M-Éditer
           <select name="livre" id="livre" defaultValue={sheet?.bookId ?? ""}>
             <option value="">Aucun</option>
-            {bks.map((b) => <option key={b.id} value={b.id}>{b.title} · {b.author}</option>)}
+            {bks.map((b) => <option key={b.id} value={b.id}>{b.author.length > 60 ? `${b.author.slice(0, 57)}…` : b.author} · {b.title}</option>)}
           </select>
         </label>
         <label>Sources de la fiche<textarea name="sources" id="sources" defaultValue={sheet?.sources ?? ""} style={{ minHeight: 80 }} placeholder="Description du Short, minutage de la conférence, référence du livre…" /></label>

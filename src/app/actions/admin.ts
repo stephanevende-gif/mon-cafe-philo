@@ -296,6 +296,19 @@ export async function saveBook(fd: FormData) {
   redirect("/admin/livres?message=sauve");
 }
 
+// Ajoute les livres du catalogue de la boutique qui ne sont pas encore dans la liste.
+export async function importCatalogueBooks() {
+  await requireEditor();
+  const { importCatalogue } = await import("@/lib/catalogue");
+  let r: { added: number; linked: number; total: number };
+  try {
+    r = await importCatalogue(db);
+  } catch {
+    fail("/admin/livres", "La boutique des Éditions M-Éditer ne répond pas : réessayez dans quelques minutes.");
+  }
+  redirect(`/admin/livres?message=sauve&ajoutes=${r.added}&lus=${r.total}`);
+}
+
 // ---------- utilisateurs (administrateurs seulement) ----------
 
 export async function adminGrant(fd: FormData) {
