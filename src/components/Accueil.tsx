@@ -1,15 +1,16 @@
 import Link from "next/link";
-import { isNotNull } from "drizzle-orm";
+import { and, eq, isNotNull, not, like, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { speakers } from "@/db/schema";
+import { speakers, videos, type User } from "@/db/schema";
 import { PAID_DAYS, PRICE_CENTS, TRIAL_DAYS } from "@/lib/access";
 import { formatDayLong } from "@/lib/dates";
 import type { JourneyContext } from "@/lib/journey";
 import { Question } from "./Question";
 import { SiteFoot } from "./SiteFoot";
 
-// Page d'accueil des visiteurs non connectés : ce qu'est l'application, avant la question du jour.
-// Les lecteurs connectés arrivent directement sur la question.
+// Page d'accueil, pour tous, avant la question du jour : la question en grand, sur l'image de la conférence qui
+// l'éclaire, avec son intervenant ; puis ce qu'est l'application. Un lecteur connecté y trouve un accès direct
+// à la question et à ses fiches ; un visiteur, l'essai gratuit.
 
 const firstSentence = (s: string) => s.match(/^.*?[.!?](\s|$)/)?.[0].trim() ?? s;
 
@@ -46,39 +47,91 @@ const AUDIENCES = [
   },
 ];
 
-export async function Accueil({ ctx }: { ctx: JourneyContext }) {
-  const people = await db
-    .select({ id: speakers.id, fullName: speakers.fullName, qualification: speakers.qualification, portrait: speakers.portrait })
-    .from(speakers)
-    .where(isNotNull(speakers.portrait))
-    .limit(6);
+const thumb = (youtubeId: string) => `https://i.ytimg.com/vi/${encodeURIComponent(youtubeId)}/hqdefault.jpg`;
+
+// Intervenants présentés, renouvelés chaque jour : seulement ceux dont la présentation est publiée, avec environ
+// un tiers d'intervenantes.
+async function faces(day: string) {
+  const base = and(isNotNull(speakers.portrait), not(like(speakers.qualification, "Présentation à compléter%")));
+  const pick = (cond: ReturnType<typeof and>, n: number) =>
+    db
+      .select({ id: speakers.id, fullName: speakers.fullName, qualification: speakers.qualification, portrait: speakers.portrait })
+      .from(speakers)
+      .where(cond)
+      .orderBy(sql`md5(${speakers.id}::text || ${day})`)
+      .limit(n);
+  const [women, others] = await Promise.all([
+    pick(and(base, eq(speakers.gender, "femme")), 4),
+    pick(and(base, sql`${speakers.gender} is distinct from 'femme'`), 8),
+  ]);
+  // Une intervenante toutes les trois places.
+  const out: typeof others = [];
+  while (women.length || others.length) {
+    if (others.length) out.push(others.shift()!);
+    if (others.length) out.push(others.shift()!);
+    if (women.length) out.push(women.shift()!);
+  }
+  return out;
+}
+
+export async function Accueil({ ctx, user }: { ctx: JourneyContext; user: User | null }) {
   const { sheet } = ctx;
+  const [people, guest] = await Promise.all([
+    faces(ctx.day),
+    sheet?.shortVideoId
+      ? db
+          .select({ fullName: speakers.fullName, qualification: speakers.qualification, portrait: speakers.portrait, youtubeId: videos.youtubeId })
+          .from(videos)
+          .leftJoin(speakers, eq(speakers.id, videos.speakerId))
+          .where(eq(videos.id, sheet.shortVideoId))
+          .then((r) => r[0] ?? null)
+      : null,
+  ]);
+  const lecture = sheet?.lectureVideoId
+    ? await db.select({ youtubeId: videos.youtubeId }).from(videos).where(eq(videos.id, sheet.lectureVideoId)).then((r) => r[0] ?? null)
+    : null;
+  const image = lecture?.youtubeId ?? guest?.youtubeId;
+  const bio = guest?.qualification && !guest.qualification.startsWith("Présentation à compléter") ? firstSentence(guest.qualification) : null;
 
   return (
     <main className="page accueil">
-      <div className="ouverture">
-        <section className="hero">
-          <span className="step-label">Mon café philo</span>
-          <h1>Chaque jour, une question. Chaque jour, l&apos;exercice de penser.</h1>
-          <p className="lead">
-            Cinq minutes par jour pour réfléchir à une vraie question philosophique, avec des philosophes et des
-            universitaires en chair et en os.
-          </p>
-          <div className="row">
-            <Link className="btn primary" href="/je-pense">Découvrir la question du jour</Link>
-            <Link className="btn" href="/inscription">Commencer gratuitement</Link>
-          </div>
-          <p className="small muted">{TRIAL_DAYS} jours gratuits, sans carte bancaire.</p>
-        </section>
-
-        {sheet && (
-          <section className="du-jour">
-            <span className="eyebrow">Question du {formatDayLong(ctx.day)}</span>
+      <section className="seuil">
+        {image && <img className="fond" src={thumb(image)} alt="" />}
+        <div className="voile">
+          <span className="eyebrow">Question du {formatDayLong(ctx.day)}</span>
+          {sheet ? (
             <p className="q"><Question text={sheet.question} /></p>
-            <Link className="btn primary" href="/je-pense">J&apos;y réfléchis →</Link>
-          </section>
-        )}
-      </div>
+          ) : (
+            <p className="q">Chaque jour, une question. Chaque jour, l&apos;exercice de penser.</p>
+          )}
+          {guest?.fullName && (
+            <div className="invite-du-jour">
+              {guest.portrait && <img src={guest.portrait} alt="" width={56} height={56} />}
+              <div>
+                <span>Avec {guest.fullName}</span>
+                {bio && <small>{bio}</small>}
+              </div>
+            </div>
+          )}
+          <div className="row">
+            <Link className="btn clair" href="/je-pense">J&apos;y réfléchis →</Link>
+            {user ? (
+              <Link className="btn contour" href="/mes-fiches">Mes fiches</Link>
+            ) : (
+              <Link className="btn contour" href="/inscription">Commencer gratuitement</Link>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <section className="hero">
+        <h1>{user ? `Bonjour ${user.displayName}.` : "Chaque jour, une question. Chaque jour, l'exercice de penser."}</h1>
+        <p className="lead">
+          Cinq minutes par jour pour réfléchir à une vraie question philosophique, avec des philosophes et des
+          universitaires en chair et en os.
+        </p>
+        {!user && <p className="small muted">{TRIAL_DAYS} jours gratuits, sans carte bancaire.</p>}
+      </section>
 
       <section className="stack-lg">
         <h2>Trois temps, chaque jour</h2>
@@ -116,7 +169,7 @@ export async function Accueil({ ctx }: { ctx: JourneyContext }) {
           <ul className="intervenants">
             {people.map((p) => (
               <li key={p.id}>
-                {p.portrait && <img src={p.portrait} alt="" width={72} height={72} />}
+                {p.portrait && <img src={p.portrait} alt="" width={72} height={72} loading="lazy" />}
                 <div>
                   <b>{p.fullName}</b>
                   <span>{firstSentence(p.qualification)}</span>
@@ -127,7 +180,7 @@ export async function Accueil({ ctx }: { ctx: JourneyContext }) {
         )}
       </section>
 
-      <section className="tarif">
+      {!user && <section className="tarif">
         <h2>Essayez librement</h2>
         <p>
           <b>{TRIAL_DAYS} jours gratuits</b>, sans carte bancaire. Ensuite, <b>{PRICE_CENTS / 100} € pour {PAID_DAYS} jours</b>,
@@ -137,7 +190,7 @@ export async function Accueil({ ctx }: { ctx: JourneyContext }) {
           <Link className="btn primary" href="/inscription">Commencer gratuitement</Link>
           <Link className="btn" href="/connexion">J&apos;ai déjà un compte</Link>
         </div>
-      </section>
+      </section>}
 
       <SiteFoot />
     </main>

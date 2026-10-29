@@ -63,7 +63,7 @@ export async function signup(formData: FormData) {
   if ("error" in result) redirect(`/inscription?message=${result.error}`);
   await sendVerification(result.user.email, result.verificationToken);
   await openSession(result.user.id);
-  redirect("/?message=bienvenue");
+  redirect("/je-pense?message=bienvenue");
 }
 
 export async function login(formData: FormData) {
