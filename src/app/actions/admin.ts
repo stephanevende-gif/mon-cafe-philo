@@ -201,6 +201,7 @@ export async function saveSpeaker(fd: FormData) {
     photoUrl,
     portrait: !photoUrl ? null : redraw ? await portraitFromUrl(photoUrl) : previous?.portrait ?? null,
     profileUrl: httpsUrl(str(fd, "presentation", 500)?.replace(/^http:\/\//, "https://") ?? null),
+    gender: fd.get("genre") === "femme" ? ("femme" as const) : fd.get("genre") === "homme" ? ("homme" as const) : null,
     verifiedAt: verified ? previous?.verifiedAt ?? new Date() : null,
     verifiedBy: verified ? previous?.verifiedBy ?? editor.id : null,
   };

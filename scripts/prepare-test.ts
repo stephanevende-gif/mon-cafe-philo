@@ -7,6 +7,7 @@ import { sheets, users } from "../src/db/schema";
 import { registerUser } from "../src/lib/accounts";
 import { passwordProblem } from "../src/lib/password";
 import { applyDrafts, type DraftBundle } from "../src/lib/draft-transfer";
+import { fillGenders } from "../src/lib/automation";
 import { directUrl } from "./direct-url";
 
 // Version de test en ligne, lancé à chaque déploiement après les migrations :
@@ -53,6 +54,7 @@ async function main() {
     const r = await applyDrafts(db, bundle);
     console.log(`Brouillons IA : ${r.sheets} fiches complétées, ${r.speakers} intervenants ajoutés, ${r.videos} vidéos reliées, ${r.articles} fiches avec leurs deux articles.`);
   }
+  console.log(`Intervenants : ${await fillGenders(db)} femme(s) ou homme(s) renseigné(s) d'après leur présentation.`);
 
   const email = process.env.ADMIN_EMAIL?.trim().toLowerCase();
   const password = process.env.ADMIN_PASSWORD;

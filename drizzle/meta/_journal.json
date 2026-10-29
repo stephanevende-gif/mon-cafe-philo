@@ -71,6 +71,13 @@
       "when": 1793255772133,
       "tag": "0009_articles_de_presse",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1793257301329,
+      "tag": "0010_genre_intervenant",
+      "breakpoints": true
     }
   ]
 }

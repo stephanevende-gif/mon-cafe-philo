@@ -132,6 +132,9 @@ export const speakers = pgTable("speakers", {
   portrait: text("portrait"),
   // Fiche auteur sur le site des Éditions M-Éditer, ou à défaut une page qui présente l'auteur.
   profileUrl: text("profile_url"),
+  // « femme » ou « homme », pour équilibrer le tirage des fiches. Déduit de la présentation quand sa grammaire
+  // le dit, sinon renseigné par l'équipe ; vide tant qu'on ne sait pas.
+  gender: text("gender").$type<"femme" | "homme">(),
   createdAt: createdAt(),
 });
 
