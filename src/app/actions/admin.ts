@@ -352,5 +352,6 @@ export async function findArticlesWithAi(fd: FormData) {
   const { fillArticles } = await import("@/lib/press");
   const r = await fillArticles(db, [id], (input, domains) => proposeArticles(input, domains), { replace: true });
   revalidatePath("/", "layout");
-  fail(back, r.done ? "Deux articles trouvés, lus en entier et certifiés par l'IA." : "L'IA n'a pas trouvé deux articles qui conviennent. Vous pouvez les saisir vous-même.");
+  const why = r.failed[0]?.match(/\(([^()]*)\)$/)?.[1];
+  fail(back, r.done ? "Deux articles trouvés, lus en entier et certifiés par l'IA." : `L'IA n'a pas trouvé deux articles qui conviennent${why ? ` (${why})` : ""}. Vous pouvez relancer la recherche ou les saisir vous-même.`);
 }

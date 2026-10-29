@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
-import { cleanArticles, fillArticles } from "@/lib/press";
+import { checkArticles, cleanArticles, fillArticles } from "@/lib/press";
 import { sheets } from "@/db/schema";
 import { testDb } from "./helpers";
 
@@ -22,11 +22,15 @@ describe("articles de presse", () => {
     // Article non lu en entier, ou réservé aux abonnés : refusé.
     expect(cleanArticles({ articles: [a, b], seenUrls, readUrls: [a.url] })).toEqual([]);
     expect(cleanArticles({ articles: [a, { ...b, readInFull: false }], seenUrls, readUrls })).toEqual([]);
-    // Adresse absente des résultats de recherche : refusée, donc moins de deux articles.
-    expect(cleanArticles({ articles: [a, art("https://theconversation.com/invente-2", "Le travail aliène")], seenUrls, readUrls: [...readUrls, "https://theconversation.com/invente-2", "https://exemple.org/b", "https://www.vie-publique.fr/files/r.pdf"] })).toEqual([]);
+    // Adresse jamais lue par l'outil de lecture (inventée ou inaccessible) : refusée, donc moins de deux articles.
+    expect(cleanArticles({ articles: [a, art("https://theconversation.com/invente-2", "Le travail aliène")], seenUrls, readUrls: [...readUrls, "https://exemple.org/b", "https://www.vie-publique.fr/files/r.pdf"] })).toEqual([]);
+    // La même page lue avec ou sans « www », barre finale, paramètres ou version « amp » : acceptée.
+    expect(cleanArticles({ articles: [a, b], seenUrls, readUrls: ["https://theconversation.com/amp/le-travail-libere-1?utm_source=x", "https://www.laviedesidees.fr/Le-travail-aliene/"] }).length).toBe(2);
     // Site non autorisé, PDF, ou deux articles du même camp : refusés.
     expect(cleanArticles({ articles: [a, art("https://exemple.org/b", "Le travail aliène")], seenUrls: [...seenUrls, "https://exemple.org/b"], readUrls: [...readUrls, "https://exemple.org/b"] })).toEqual([]);
     expect(cleanArticles({ articles: [a, art("https://www.vie-publique.fr/files/r.pdf", "Le travail aliène")], seenUrls: [...seenUrls, "https://www.vie-publique.fr/files/r.pdf"], readUrls: [...readUrls, "https://www.vie-publique.fr/files/r.pdf"] })).toEqual([]);
+    // Le motif du refus est donné à l'administration.
+    expect(checkArticles({ articles: [a, b], seenUrls, readUrls: [a.url] }).reason).toBe("2 proposé(s), 1 page(s) lue(s) ; refus : page non lue par l'outil de lecture");
     expect(cleanArticles({ articles: [a, { ...b, side: "le travail libère" }], seenUrls, readUrls: [...readUrls, "https://theconversation.com/invente-2", "https://exemple.org/b", "https://www.vie-publique.fr/files/r.pdf"] })).toEqual([]);
   });
 

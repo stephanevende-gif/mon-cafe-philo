@@ -307,6 +307,29 @@ export interface ArticleSearch {
   usage?: { input: number; output: number; searches: number; fetches: number };
 }
 
+// Relève les adresses trouvées et celles réellement lues, où qu'elles figurent dans la réponse (la recherche peut
+// passer par l'exécution de code). Une lecture compte sous l'adresse demandée comme sous l'adresse renvoyée.
+function collectUrls(content: unknown, seenUrls: string[], readUrls: string[]) {
+  const asked = new Map<string, string>();
+  const walk = (o: unknown): void => {
+    if (Array.isArray(o)) return o.forEach(walk);
+    if (!o || typeof o !== "object") return;
+    const b = o as Record<string, unknown>;
+    if (b.type === "server_tool_use" && b.name === "web_fetch" && typeof (b.input as { url?: unknown })?.url === "string") asked.set(b.id as string, (b.input as { url: string }).url);
+    if (b.type === "web_search_result" && typeof b.url === "string") seenUrls.push(b.url);
+    if (b.type === "web_fetch_tool_result") {
+      const r = b.content as { type?: string; url?: string } | undefined;
+      if (r?.type === "web_fetch_result") {
+        if (r.url) readUrls.push(r.url);
+        const first = asked.get(b.tool_use_id as string);
+        if (first) readUrls.push(first);
+      }
+    }
+    for (const v of Object.values(b)) if (typeof v === "object") walk(v);
+  };
+  walk(content);
+}
+
 // L'IA cherche sur les seuls sites autorisés deux articles qui prennent chacun une branche de l'alternative.
 export async function proposeArticles(
   input: { question: string; problem?: string | null },
@@ -345,12 +368,7 @@ Ne propose que des articles trouvés dans les résultats de recherche, avec leur
     usage.output += response.usage.output_tokens;
     usage.searches += response.usage.server_tool_use?.web_search_requests ?? 0;
     usage.fetches += response.usage.server_tool_use?.web_fetch_requests ?? 0;
-    for (const block of response.content) {
-      if (block.type === "web_search_tool_result" && Array.isArray(block.content)) {
-        for (const r of block.content) if (r.type === "web_search_result") seenUrls.push(r.url);
-      }
-      if (block.type === "web_fetch_tool_result" && block.content.type === "web_fetch_result") readUrls.push(block.content.url);
-    }
+    collectUrls(response.content, seenUrls, readUrls);
     if (response.stop_reason === "pause_turn") {
       messages.push({ role: "assistant", content: response.content });
       continue;
