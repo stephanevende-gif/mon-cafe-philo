@@ -273,12 +273,28 @@ th { font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color:
 .accueil .hero h1 { font-size: clamp(2.3rem, 8.4vw, 4.6rem); line-height: 1.06; letter-spacing: -.01em; max-width: 16ch; }
 .accueil .hero h1.salut { font-size: clamp(1.5rem, 4vw, 2.2rem); max-width: none; }
 .accueil .lead { font-size: clamp(1.05rem, 2.4vw, 1.3rem); max-width: 40ch; color: var(--anthracite); }
-/* Le seuil : la question du jour en grand, sur l'image de la conférence, voilée de bleu nuit. */
+/* Le seuil : la devise et l'adage, sur un conférencier qui parle sans le son, voilé de bleu nuit. */
 .accueil .seuil { position: relative; overflow: hidden; background: var(--nuit); color: var(--papier); min-height: min(78vh, 640px); display: flex; align-items: flex-end; }
 .accueil .seuil .fond { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: grayscale(.35) contrast(1.05); opacity: .55; transform: scale(1.34); /* hors des bandes noires de la vignette 4:3 */ }
 .accueil .seuil .voile { position: relative; display: flex; flex-direction: column; gap: 22px; align-items: flex-start; width: 100%; padding: 40px 22px 32px;
   background: linear-gradient(to top, rgba(30, 34, 74, .96) 30%, rgba(30, 34, 74, .55) 75%, rgba(30, 34, 74, .15)); }
 .accueil .seuil .eyebrow { color: #e9d6cf; letter-spacing: .14em; }
+.accueil .seuil iframe.fond { inset: auto; top: 50%; left: 50%; width: max(100%, calc(min(78vh, 640px) * 1.78)); min-height: 100%; height: auto; aspect-ratio: 16 / 9; transform: translate(-50%, -50%) scale(1.15); border: 0; pointer-events: none; opacity: .5; }
+@media (prefers-reduced-motion: reduce) { .accueil .seuil iframe.fond { display: none; } }
+.accueil .seuil .devise { font-family: var(--serif); color: var(--papier); font-size: clamp(2.4rem, 8vw, 4.8rem); line-height: 1.02; letter-spacing: -.01em; display: flex; flex-wrap: wrap; gap: 0 .35em; }
+.accueil .seuil .devise span:nth-child(2) { color: #e9d6cf; }
+.accueil .seuil .adage { margin: 0; border-left: 3px solid #e9d6cf; padding-left: 14px; display: flex; flex-direction: column; gap: 4px; }
+.accueil .seuil .adage p { font-family: var(--serif); font-size: clamp(1.2rem, 3.4vw, 1.7rem); line-height: 1.25; color: var(--papier); }
+.accueil .seuil .adage footer { font-size: .85rem; color: #d8dbe8; }
+.accueil .seuil .pitch { max-width: 52ch; color: #e7e9f2; font-size: clamp(1rem, 2.2vw, 1.15rem); }
+.accueil .choix-test { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 860px; }
+.accueil .choix-test ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.accueil .choix-test a { display: flex; flex-direction: column; gap: 6px; padding: 14px 16px; background: rgba(253, 254, 249, .96); color: var(--nuit); text-decoration: none; border-left: 4px solid var(--sepia); }
+.accueil .choix-test a:hover { background: var(--papier); }
+.accueil .choix-test .n { font-size: .72rem; letter-spacing: .14em; text-transform: uppercase; font-weight: 700; color: var(--sepia); }
+.accueil .choix-test .qt { font-family: var(--serif); font-size: clamp(1.1rem, 2.8vw, 1.35rem); line-height: 1.25; }
+.accueil .choix-test .go { font-weight: 600; font-size: .9rem; }
+@media (min-width: 760px) { .accueil .choix-test ol { grid-template-columns: 1fr 1fr; } }
 .accueil .seuil .q { font-family: var(--serif); color: var(--papier); font-size: clamp(2rem, 6.4vw, 3.9rem); line-height: 1.08; letter-spacing: -.01em; text-wrap: balance; max-width: 22ch; }
 .accueil .invite-du-jour { display: flex; gap: 14px; align-items: center; }
 .accueil .invite-du-jour img { width: 56px; height: 56px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255, 255, 255, .7); flex: none; }

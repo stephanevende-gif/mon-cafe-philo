@@ -3,14 +3,13 @@ import { and, eq, isNotNull, not, like, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { speakers, videos, type Sheet, type User } from "@/db/schema";
 import { PAID_DAYS, PRICE_CENTS, TRIAL_DAYS } from "@/lib/access";
-import { formatDayLong } from "@/lib/dates";
 import { STUDENT_PATTERN } from "@/lib/student";
 import type { JourneyContext } from "@/lib/journey";
 import { Question } from "./Question";
 import { SiteFoot } from "./SiteFoot";
 
-// Page d'accueil, pour tous, avant la question du jour : la question en grand, sur l'image de la conférence qui
-// l'éclaire, avec son intervenant ; puis ce qu'est l'application. Un lecteur connecté y trouve un accès direct
+// Page d'accueil, pour tous, avant la question du jour : « Je pense. Donc ? Je suis. » et l'adage de l'application,
+// sur un conférencier qui parle en fond, sans le son ; puis ce qu'est l'application. Un lecteur connecté y trouve un accès direct
 // à la question et à ses fiches ; un visiteur, l'essai gratuit.
 
 const firstSentence = (s: string) => s.match(/^.*?[.!?](\s|$)/)?.[0].trim() ?? s;
@@ -96,30 +95,56 @@ export async function Accueil({ ctx, user, tests = [] }: { ctx: JourneyContext; 
     ? await db.select({ youtubeId: videos.youtubeId }).from(videos).where(eq(videos.id, sheet.lectureVideoId)).then((r) => r[0] ?? null)
     : null;
   const image = lecture?.youtubeId ?? guest?.youtubeId;
-  const bio = guest?.qualification && !guest.qualification.startsWith("Présentation à compléter") ? firstSentence(guest.qualification) : null;
 
   return (
     <main className="page accueil">
       <section className="seuil">
         {image && <img className="fond" src={thumb(image)} alt="" />}
+        {image && (
+          // Un conférencier de la chaîne parle en fond, sans le son : lecture automatique, en boucle, sans commandes.
+          <iframe
+            className="fond video"
+            src={`https://www.youtube-nocookie.com/embed/${encodeURIComponent(image)}?autoplay=1&mute=1&controls=0&loop=1&playlist=${encodeURIComponent(image)}&start=60&playsinline=1&rel=0&disablekb=1&iv_load_policy=3&modestbranding=1`}
+            title="Conférencier des Éditions M-Éditer, sans le son"
+            aria-hidden="true"
+            tabIndex={-1}
+            allow="autoplay; encrypted-media"
+          />
+        )}
         <div className="voile">
-          <span className="eyebrow">{tests.length ? "Version de test" : `Question du ${formatDayLong(ctx.day)}`}</span>
-          {sheet ? (
-            <p className="q"><Question text={sheet.question} /></p>
-          ) : (
-            <p className="q">Chaque jour, une question. Chaque jour, l&apos;exercice de penser.</p>
-          )}
-          {guest?.fullName && (
-            <div className="invite-du-jour">
-              {guest.portrait && <img src={guest.portrait} alt="" width={56} height={56} />}
-              <div>
-                <span>Avec {guest.fullName}</span>
-                {bio && <small>{bio}</small>}
-              </div>
+          <span className="eyebrow">{tests.length ? "Mon café philo · version de test" : "Mon café philo"}</span>
+          <p className="devise">
+            <span>Je pense.</span> <span>Donc&nbsp;?</span> <span>Je suis.</span>
+          </p>
+          <blockquote className="adage">
+            <p>On n&apos;apprend pas la philosophie. On apprend à philosopher.</p>
+            <footer>D&apos;après Kant</footer>
+          </blockquote>
+          <p className="pitch">
+            L&apos;application met en œuvre cet adage : chaque jour, un sujet de réflexion, une discussion argumentée avec un
+            philosophe contemporain, et votre propre réponse.
+          </p>
+          {tests.length > 0 ? (
+            <div className="choix-test" id="questions-test">
+              <span className="eyebrow">Version de test : travaillez l&apos;une ou l&apos;autre de ces questions</span>
+              <ol>
+                {tests.map((t, i) => {
+                  const href = i === 0 ? "/je-pense" : user ? `/mes-fiches/${t.id}` : "/inscription";
+                  return (
+                    <li key={t.id}>
+                      <Link href={href}>
+                        <span className="n">Question {i + 1}</span>
+                        <span className="qt"><Question text={t.question} /></span>
+                        <span className="go">J&apos;y réfléchis →</span>
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ol>
             </div>
-          )}
+          ) : null}
           <div className="row">
-            <Link className="btn clair" href="/je-pense">J&apos;y réfléchis →</Link>
+            {!tests.length && <Link className="btn clair" href="/je-pense">Découvrir le sujet du jour →</Link>}
             {user ? (
               <Link className="btn contour" href="/mes-fiches">Mes fiches</Link>
             ) : (
@@ -138,29 +163,6 @@ export async function Accueil({ ctx, user, tests = [] }: { ctx: JourneyContext; 
         {!user && <p className="small muted">{TRIAL_DAYS} jours gratuits, sans carte bancaire.</p>}
       </section>
 
-      {tests.length > 0 && (
-        <section className="stack-lg questions-test" id="questions-test">
-          <div className="stack">
-            <h2>{tests.length > 1 ? `Les ${tests.length} questions à essayer` : "La question à essayer"}</h2>
-            <p className="muted">
-              Cette version de test est ouverte à quelques lecteurs. Travaillez chaque question dans l&apos;ordre des trois temps, puis
-              dites-nous ce que vous en pensez.
-            </p>
-          </div>
-          <ol className="liste-fiches">
-            {tests.map((t, i) => {
-              const href = i === 0 ? "/je-pense" : user ? `/mes-fiches/${t.id}` : "/inscription";
-              return (
-                <li key={t.id}>
-                  <span className="small muted">Question {i + 1} · {t.theme}</span>
-                  <Link className="q" href={href}><Question text={t.question} /></Link>
-                  <div className="row"><Link className="btn" href={href}>J&apos;y réfléchis →</Link></div>
-                </li>
-              );
-            })}
-          </ol>
-        </section>
-      )}
 
       <section className="stack-lg">
         <h2>Trois temps, chaque jour</h2>
