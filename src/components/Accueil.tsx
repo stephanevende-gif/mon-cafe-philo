@@ -121,8 +121,8 @@ export async function Accueil({ ctx, user, tests = [] }: { ctx: JourneyContext; 
             <footer>Kant, <cite>Logique</cite>, Introduction, III</footer>
           </blockquote>
           <p className="pitch">
-            L&apos;application met en œuvre cet adage : chaque jour, un sujet de réflexion, une discussion argumentée avec un
-            philosophe contemporain, et votre propre réponse.
+            Proposée par les Éditions M-Éditer, cette application donne vie à l’adage de Kant&nbsp;: chaque jour, un sujet de
+            réflexion, un dialogue argumenté avec un philosophe contemporain et, pour finir, votre propre réponse.
           </p>
           {tests.length > 0 ? (
             <div className="choix-test" id="questions-test">
