@@ -153,6 +153,7 @@ export default async function Page({ params, searchParams }: Props) {
             <option value="">Aucun</option>
             {bks.map((b) => <option key={b.id} value={b.id}>{b.author.length > 60 ? `${b.author.slice(0, 57)}…` : b.author} · {b.title}</option>)}
           </select>
+          <span className="hint">À laisser sur « Aucun » : à la validation, les trois livres de l&apos;auteur les plus proches du sujet sont choisis automatiquement dans le catalogue, et le premier est mis en avant ici.</span>
         </label>
         <label>Sources de la fiche<textarea name="sources" id="sources" defaultValue={sheet?.sources ?? ""} style={{ minHeight: 80 }} placeholder="Description du Short, minutage de la conférence, référence du livre…" /></label>
         <label>Notes éditoriales internes<textarea name="notes" id="notes" defaultValue={sheet?.editorialNotes ?? ""} style={{ minHeight: 80 }} /></label>
