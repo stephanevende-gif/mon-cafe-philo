@@ -29,5 +29,6 @@ export async function saveReflection(formData: FormData) {
   if (await hitLimit(db, `carnet:${user.id}`, 30, 60 * 60 * 1000)) redirect(`${back}?message=trop`);
   await addEntry(db, user.id, sheet.id, stage, body);
   revalidatePath(back);
-  redirect(`${back}?message=enregistre`);
+  // Après la première réflexion, la page s'ouvre sur l'invitation à poursuivre.
+  redirect(`${back}?message=enregistre${stage === "je_pense" ? "#relance" : ""}`);
 }

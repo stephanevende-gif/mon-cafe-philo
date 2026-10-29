@@ -146,6 +146,7 @@ textarea { min-height: 160px; resize: vertical; line-height: 1.55; }
 .suis { display: grid; gap: 36px; }
 .suis > * { min-width: 0; }
 .versions { display: grid; gap: 12px; }
+.relance { scroll-margin-top: 24px; font-family: var(--serif); font-size: clamp(1.15rem, 2.4vw, 1.45rem); line-height: 1.35; color: var(--nuit); border-left: 3px solid var(--sepia); padding: 2px 0 2px 16px; margin: 4px 0; text-wrap: pretty; }
 .version { background: var(--papier); border: 1px solid var(--filet); padding: 16px; display: flex; flex-direction: column; gap: 6px; }
 .version .meta { display: flex; justify-content: space-between; gap: 8px; font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; color: var(--gris); font-weight: 700; }
 .version .meta span { white-space: nowrap; }
