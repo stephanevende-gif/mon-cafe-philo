@@ -45,14 +45,17 @@ describe("articles de presse", () => {
     const a = art("https://theconversation.com/oui-1", "Oui");
     const b = art("https://theconversation.com/non-2", "Non");
     const propose = async () => ({ articles: [a, b], seenUrls: [a.url, b.url], readUrls: [a.url, b.url] });
-    expect(await fillArticles(ctx.db, [todo.id, done.id], propose)).toEqual({ done: 1, failed: [] });
+    expect(await fillArticles(ctx.db, [todo.id, done.id], propose)).toEqual({ done: 1, failed: [], reasons: [] });
     const after = await ctx.db.query.sheets.findFirst({ where: eq(sheets.id, todo.id) });
     expect(after?.pressArticles).toEqual([
       { url: a.url, title: "Titre Oui", source: "The Conversation", date: "2025-03-01", side: "Oui", description: a.description },
       { url: b.url, title: "Titre Non", source: "The Conversation", date: "2025-03-01", side: "Non", description: b.description },
     ]);
     expect((await ctx.db.query.sheets.findFirst({ where: eq(sheets.id, done.id) }))?.pressArticles).toBeNull();
+    // Un échec donne son motif.
+    const refuse = async () => ({ articles: [a, b], seenUrls: [a.url, b.url], readUrls: [] });
+    expect(await fillArticles(ctx.db, [todo.id], refuse, { replace: true })).toEqual({ done: 0, failed: [todo.question], reasons: ["2 proposé(s), 0 page(s) lue(s) ; refus : page non lue par l'outil de lecture, page non lue par l'outil de lecture"] });
     // Rien à chercher une seconde fois.
-    expect(await fillArticles(ctx.db, [todo.id], propose)).toEqual({ done: 0, failed: [] });
+    expect(await fillArticles(ctx.db, [todo.id], propose)).toEqual({ done: 0, failed: [], reasons: [] });
   });
 });

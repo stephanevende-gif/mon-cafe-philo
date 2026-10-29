@@ -116,9 +116,11 @@ export async function fillArticles(
   sheetIds: string[],
   propose: ProposeArticles,
   opts: { replace?: boolean } = {},
-): Promise<{ done: number; failed: string[] }> {
+): Promise<{ done: number; failed: string[]; reasons: string[] }> {
   let done = 0;
   const failed: string[] = [];
+  // Motif de chaque échec, dans l'ordre de failed.
+  const reasons: string[] = [];
   for (const id of sheetIds) {
     const sheet = await db.query.sheets.findFirst({ where: eq(sheets.id, id) });
     if (!sheet || (sheet.pressArticles && !opts.replace) || sheet.question.startsWith("[Question à rédiger]")) continue;
@@ -127,7 +129,8 @@ export async function fillArticles(
       const { articles, reason } = found ? checkArticles(found) : { articles: [], reason: "recherche interrompue" };
       if (articles.length < 2) {
         console.error("Articles refusés", sheet.id, reason, JSON.stringify(found?.articles ?? []), JSON.stringify(found?.readUrls ?? []));
-        failed.push(`${sheet.question} (${reason})`);
+        failed.push(sheet.question);
+        reasons.push(reason);
         continue;
       }
       const r = await db
@@ -138,8 +141,9 @@ export async function fillArticles(
       done += r.length;
     } catch (e) {
       console.error("Recherche d'articles en échec", sheet.id, e);
-      failed.push(`${sheet.question} (${(e as Error).message.slice(0, 200)})`);
+      failed.push(sheet.question);
+      reasons.push((e as Error).message.slice(0, 200));
     }
   }
-  return { done, failed };
+  return { done, failed, reasons };
 }
