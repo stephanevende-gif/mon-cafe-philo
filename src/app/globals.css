@@ -65,7 +65,7 @@ p { margin: 0; }
 .theme { font-size: .85rem; color: var(--gris); }
 .theme b { color: var(--anthracite); font-weight: 600; }
 .sheet-title { font-family: var(--serif); color: var(--anthracite); font-size: clamp(1.15rem, 3vw, 1.5rem); line-height: 1.3; margin: 4px 0 0; text-wrap: balance; }
-.question { font-family: var(--serif); color: var(--nuit); font-size: clamp(2.3rem, 9vw, 5.2rem); line-height: 1.07; letter-spacing: -.01em; text-wrap: balance; }
+.question { font-family: var(--serif); color: var(--nuit); font-size: clamp(1.9rem, 6vw, 3.1rem); line-height: 1.12; letter-spacing: -.01em; text-wrap: balance; }
 .recall { font-family: var(--serif); color: var(--nuit); font-size: clamp(1.35rem, 3.6vw, 2.5rem); line-height: 1.15; text-wrap: balance; }
 .invite { font-family: var(--serif); font-size: clamp(1.15rem, 2.4vw, 1.5rem); }
 .page-title { font-size: clamp(1.8rem, 5vw, 2.6rem); line-height: 1.1; }
