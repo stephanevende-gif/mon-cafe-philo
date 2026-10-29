@@ -117,8 +117,8 @@ export async function Accueil({ ctx, user, tests = [] }: { ctx: JourneyContext; 
             <span>Je pense.</span> <span>Donc&nbsp;?</span> <span>Je suis.</span>
           </p>
           <blockquote className="adage">
-            <p>On n&apos;apprend pas la philosophie. On apprend à philosopher.</p>
-            <footer>D&apos;après Kant</footer>
+            <p>« On ne peut apprendre aucune philosophie&nbsp;; on ne peut qu&apos;apprendre à philosopher. »</p>
+            <footer>Kant, <cite>Logique</cite>, Introduction, III</footer>
           </blockquote>
           <p className="pitch">
             L&apos;application met en œuvre cet adage : chaque jour, un sujet de réflexion, une discussion argumentée avec un
