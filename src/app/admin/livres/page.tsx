@@ -2,19 +2,25 @@ import { asc } from "drizzle-orm";
 import { db } from "@/db";
 import { books } from "@/db/schema";
 import { Notice } from "@/components/Notice";
-import { saveBook } from "@/app/actions/admin";
+import { importCatalogueBooks, saveBook } from "@/app/actions/admin";
+import { PendingButton } from "@/components/PendingButton";
 
-type Props = { searchParams: Promise<{ message?: string; modifier?: string }> };
+type Props = { searchParams: Promise<{ message?: string; modifier?: string; ajoutes?: string; lus?: string }> };
 
 export default async function Page({ searchParams }: Props) {
   const sp = await searchParams;
-  const rows = await db.select().from(books).orderBy(asc(books.title));
+  const rows = await db.select().from(books).orderBy(asc(books.author), asc(books.title));
   const edit = sp.modifier ? rows.find((r) => r.id === sp.modifier) : undefined;
   return (
     <div className="stack-lg">
       <h1 className="page-title">Livres</h1>
       <p className="muted">Uniquement des ouvrages du catalogue des Éditions M-Éditer, avec leur couverture originale et le lien vers leur fiche.</p>
       <Notice code={sp.message} />
+      {sp.lus && <p className="notice ok" role="status">Catalogue lu : {sp.lus} livres, dont {sp.ajoutes ?? 0} ajoutés à la liste.</p>}
+      <form action={importCatalogueBooks}>
+        <PendingButton pending="Lecture du catalogue en cours…">Importer tout le catalogue de la boutique</PendingButton>
+        <span className="hint"> {rows.length} livres dans la liste. Le catalogue est aussi relu à chaque mise en ligne.</span>
+      </form>
       <div className="table-wrap">
         <table>
           <thead><tr><th></th><th>Titre</th><th>Auteur</th><th>Fiche boutique</th><th></th></tr></thead>

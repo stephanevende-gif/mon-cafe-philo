@@ -8,6 +8,7 @@ import { registerUser } from "../src/lib/accounts";
 import { passwordProblem } from "../src/lib/password";
 import { applyDrafts, type DraftBundle } from "../src/lib/draft-transfer";
 import { fillGenders } from "../src/lib/automation";
+import { importCatalogue } from "../src/lib/catalogue";
 import { directUrl } from "./direct-url";
 
 // Version de test en ligne, lancé à chaque déploiement après les migrations :
@@ -53,6 +54,13 @@ async function main() {
     const bundle = JSON.parse(gunzipSync(readFileSync(DRAFTS)).toString("utf8")) as DraftBundle;
     const r = await applyDrafts(db, bundle);
     console.log(`Brouillons IA : ${r.sheets} fiches complétées, ${r.speakers} intervenants ajoutés, ${r.videos} vidéos reliées, ${r.articles} fiches avec leurs deux articles.`);
+  }
+  // Catalogue complet des Éditions M-Éditer, pour le choix du livre de chaque fiche. Une boutique injoignable ne bloque pas le déploiement.
+  try {
+    const c = await importCatalogue(db);
+    console.log(`Catalogue M-Éditer : ${c.total} livres lus, ${c.added} ajoutés, ${c.linked} reliés à leur fiche boutique.`);
+  } catch (e) {
+    console.warn("Catalogue M-Éditer non lu :", (e as Error).message);
   }
   console.log(`Intervenants : ${await fillGenders(db)} femme(s) ou homme(s) renseigné(s) d'après leur présentation.`);
 
