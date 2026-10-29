@@ -360,7 +360,8 @@ export async function attachAuthor(
   vids: { id: string; youtubeId: string; description: string | null }[],
   photo: Photo = (url, o) => portraitFromUrl(url, fetch, o),
 ) {
-  const fullName = name.trim().slice(0, 120);
+  // « Yvon Quiniou (sur Marcel Conche) » : la précision entre parenthèses ne fait pas partie du nom.
+  const fullName = name.replace(/\s*\([^)]*\)/g, "").trim().slice(0, 120);
   if (!fullName) return;
   const free = (await db.select({ id: videos.id }).from(videos).where(and(inArray(videos.id, vids.map((v) => v.id)), isNull(videos.speakerId)))).map((v) => v.id);
   if (free.length === 0) return;
