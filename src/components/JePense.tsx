@@ -18,7 +18,7 @@ export async function JePense({ ctx, message }: { ctx: JourneyContext; message?:
   const access = await currentAccess();
   const entries = user && sheet ? await listEntries(db, user.id, sheet.id) : [];
   const first = entries[0];
-  const here = ctx.base || "/";
+  const here = ctx.base || "/je-pense";
 
   return (
     <main className="page">
@@ -59,6 +59,10 @@ export async function JePense({ ctx, message }: { ctx: JourneyContext; message?:
                     </div>
                     <p>{first.body}</p>
                   </div>
+                  <p className="relance" id="relance">
+                    Votre pensée est notée. Gardez-la en tête : la piste du jour va maintenant la mettre à l&apos;épreuve,
+                    avec un philosophe qui s&apos;est posé la même question.
+                  </p>
                   <div className="row">
                     <Link className="btn primary" href={`${ctx.base}/donc`}>Découvrir une piste : Donc ? →</Link>
                     <Link className="btn" href={`${ctx.base}/je-suis`}>Revenir sur ma pensée</Link>

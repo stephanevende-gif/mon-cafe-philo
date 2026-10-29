@@ -10,7 +10,7 @@ const STEPS: { key: Stage; label: string; hint: string; suffix: string }[] = [
 
 // base : "" pour la question du jour, "/question/AAAA-MM-JJ" pour une archive.
 export function Steps({ base, current }: { base: string; current: Stage }) {
-  const href = (suffix: string) => (base + suffix) || "/";
+  const href = (suffix: string) => (base + suffix) || "/je-pense";
   return (
     <>
       <nav className="steps-nav" aria-label="Parcours">
