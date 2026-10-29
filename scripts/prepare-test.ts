@@ -6,13 +6,16 @@ import { createDb } from "../src/db";
 import { sheets, users } from "../src/db/schema";
 import { registerUser } from "../src/lib/accounts";
 import { passwordProblem } from "../src/lib/password";
+import { applyDrafts, type DraftBundle } from "../src/lib/draft-transfer";
 import { directUrl } from "./direct-url";
 
 // Version de test en ligne, lancé à chaque déploiement après les migrations :
 // 1. une base vide reçoit l'instantané des fiches, auteurs, livres et vidéos préparés (aucun compte lecteur) ;
-// 2. le compte administrateur ADMIN_EMAIL / ADMIN_PASSWORD est créé s'il n'existe pas.
+// 2. les brouillons IA préparés hors ligne complètent les fiches que personne n'a encore touchées ;
+// 3. le compte administrateur ADMIN_EMAIL / ADMIN_PASSWORD est créé s'il n'existe pas.
 // Une base qui contient déjà des fiches n'est jamais modifiée par l'instantané.
 const SNAPSHOT = "data/instantane-test.sql.gz";
+const DRAFTS = "data/brouillons-ia.json.gz";
 
 async function main() {
   if (!process.env.DATABASE_URL) {
@@ -43,6 +46,12 @@ async function main() {
     } finally {
       client.release(true);
     }
+  }
+
+  if (existsSync(DRAFTS)) {
+    const bundle = JSON.parse(gunzipSync(readFileSync(DRAFTS)).toString("utf8")) as DraftBundle;
+    const r = await applyDrafts(db, bundle);
+    console.log(`Brouillons IA : ${r.sheets} fiches complétées, ${r.speakers} intervenants ajoutés, ${r.videos} vidéos reliées.`);
   }
 
   const email = process.env.ADMIN_EMAIL?.trim().toLowerCase();
