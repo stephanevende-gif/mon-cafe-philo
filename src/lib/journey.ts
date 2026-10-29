@@ -3,7 +3,8 @@ import { notFound } from "next/navigation";
 import { db } from "@/db";
 import type { Sheet } from "@/db/schema";
 import { isDay, parisDay } from "./dates";
-import { getPublishedSheet, getSheetOfTheDay } from "./sheets";
+import { getPublishedSheet, getSheetOfTheDay, sheetForReader } from "./sheets";
+import { currentUser } from "./auth";
 
 export interface JourneyContext {
   sheet: Sheet | null;
@@ -13,12 +14,13 @@ export interface JourneyContext {
   fallback: boolean;
 }
 
-// Sans jour : la question du jour (ou la fiche de secours). Avec un jour : une archive.
+// Sans jour : la question du jour (ou la fiche de secours), remplacée pour un lecteur qui l'a déjà travaillée. Avec un jour : une archive.
 export async function resolveJourney(dayParam?: string): Promise<JourneyContext> {
   const today = parisDay();
   if (!dayParam) {
-    const found = await getSheetOfTheDay(db, today);
-    return { sheet: found?.sheet ?? null, day: today, base: "", isToday: true, fallback: !!found?.fallback };
+    const [found, user] = await Promise.all([getSheetOfTheDay(db, today), currentUser()]);
+    const sheet = found && user ? await sheetForReader(db, user.id, found.sheet, today) : found?.sheet ?? null;
+    return { sheet, day: today, base: "", isToday: true, fallback: !!found?.fallback };
   }
   if (!isDay(dayParam) || dayParam > today) notFound();
   const sheet = await getPublishedSheet(db, dayParam);

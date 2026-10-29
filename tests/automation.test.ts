@@ -126,17 +126,47 @@ describe("programmation quotidienne", () => {
     expect(r.action).toBe("rediffusion");
     expect(r.movedToQueue).toBeDefined();
     const replay = await ctx.db.query.sheets.findFirst({ where: eq(sheets.day, "2026-10-27") });
-    // Seule la fiche de juin n'a pas été publiée dans les 4 derniers mois.
+    // Les trois fiches ont été montrées dans l'année : celle de juin, la plus ancienne, revient.
     expect(replay).toMatchObject({ status: "validee", replayOf: old.id, question: "Q liberté" });
 
     expect((await planDay(ctx.db, "2026-10-27")).action).toBe("deja_prete");
-    // Le lendemain, plus aucune fiche ancienne disponible : la fiche de secours prendra le relais.
-    expect((await planDay(ctx.db, "2026-10-28")).action).toBe("aucune");
+    // Le lendemain, c'est au tour de celle du 20 octobre.
+    const next = await planDay(ctx.db, "2026-10-28");
+    expect(next.action).toBe("rediffusion");
+    expect((await ctx.db.query.sheets.findFirst({ where: eq(sheets.id, next.sheetId!) }))?.question).toBe("Q vérité");
+  });
+
+  it("tire au sort les fiches validées sans date, sans jamais les répéter dans l'année", async () => {
+    await ctx.db.delete(sheets);
+    const [sp] = await ctx.db.insert(speakers).values({ fullName: "Intervenant tirage", qualification: "q" }).returning();
+    const notions = ["l'art", "le bonheur", "la conscience", "le devoir", "l'état"];
+    for (const [i, theme] of notions.entries()) {
+      const [v] = await ctx.db.insert(videos).values({ youtubeId: `tirage${i}AAAA`, kind: "short", title: theme, speakerId: sp.id }).returning();
+      await ctx.db.insert(sheets).values({ theme, question: `Q ${theme}`, shortVideoId: v.id, status: "validee" });
+    }
+    // Une fiche à vérifier n'est jamais tirée.
+    await ctx.db.insert(sheets).values({ theme: "le temps", question: "Pas encore validée", status: "a_verifier" });
+
+    const seen: string[] = [];
+    for (let i = 0; i < 5; i++) {
+      const r = await planDay(ctx.db, addDays("2027-01-01", i));
+      expect(r.action).toBe("tirage");
+      const s = await ctx.db.query.sheets.findFirst({ where: eq(sheets.id, r.sheetId!) });
+      expect(s).toMatchObject({ day: addDays("2027-01-01", i), replayOf: null, status: "validee" });
+      seen.push(s!.question);
+    }
+    expect(new Set(seen).size).toBe(5);
+    expect(seen).not.toContain("Pas encore validée");
+
+    // Toutes ont été montrées : la première revient, en rediffusion.
+    const r = await planDay(ctx.db, "2027-01-06");
+    expect(r.action).toBe("rediffusion");
+    expect((await ctx.db.query.sheets.findFirst({ where: eq(sheets.id, r.sheetId!) }))?.question).toBe(seen[0]);
   });
 
   it("rediffuse environ deux tiers de fiches anciennes et un tiers de fiches récentes", async () => {
     const [sp] = await ctx.db.insert(speakers).values({ fullName: "Intervenant", qualification: "q" }).returning();
-    for (const [yt, published, day] of [["vieuxAAAA01", "2023-03-01", "2026-01-10"], ["vieuxBBBB02", "2024-02-01", "2026-01-11"], ["neufCCCCC03", "2026-05-01", "2026-05-02"], ["neufDDDDD04", "2026-06-01", "2026-06-02"]]) {
+    for (const [yt, published, day] of [["vieuxAAAA01", "2023-03-01", "2025-01-10"], ["vieuxBBBB02", "2024-02-01", "2025-01-11"], ["neufCCCCC03", "2026-05-01", "2025-05-02"], ["neufDDDDD04", "2026-06-01", "2025-06-02"]]) {
       const [v] = await ctx.db.insert(videos).values({ youtubeId: yt, kind: "short", title: yt, speakerId: sp.id, publishedAt: new Date(published) }).returning();
       await ctx.db.insert(sheets).values({ day, theme: "la liberté", question: yt, synthesis: "s", shortVideoId: v.id, status: "validee" });
     }

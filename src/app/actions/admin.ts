@@ -300,7 +300,7 @@ export async function syncNow() {
   if (!process.env.YOUTUBE_API_KEY) parts.push("Clé YouTube manquante : seule la programmation a été faite.");
   else if (r.syncError) parts.push(`Lecture de la playlist impossible : ${r.syncError}`);
   else if (r.sync) parts.push(`${r.sync.newShorts} nouveau(x) Short(s), ${r.sync.queued} en file.`);
-  parts.push(...r.plans.map((p) => `${p.day} : ${p.action === "deja_prete" ? "fiche validée prête" : p.action === "rediffusion" ? "rediffusion programmée" : "fiche de secours"}.`));
+  parts.push(...r.plans.map((p) => `${p.day} : ${p.action === "deja_prete" ? "fiche validée prête" : p.action === "tirage" ? "fiche validée tirée au sort" : p.action === "rediffusion" ? "rediffusion programmée" : "fiche de secours"}.`));
   redirect(`/admin/synchronisation?message=${encodeURIComponent(parts.join(" "))}`);
 }
 

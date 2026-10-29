@@ -47,7 +47,7 @@ export default async function Page({ params, searchParams }: Props) {
       {sheet?.replayOf && <p className="notice ok" role="note">Rediffusion automatique d&apos;une fiche déjà publiée.</p>}
       <form action={saveSheet} className="field-group">
         {sheet && <input type="hidden" name="id" value={sheet.id} />}
-        <label>Jour de publication<input type="date" name="jour" id="jour" defaultValue={sheet?.day ?? sp.jour ?? ""} /><span className="hint">Laisser vide pour une fiche non programmée ou de secours. Le sujet change à minuit, heure de Paris.</span></label>
+        <label>Jour de publication (facultatif)<input type="date" name="jour" id="jour" defaultValue={sheet?.day ?? sp.jour ?? ""} /><span className="hint">À laisser vide : chaque jour, une fiche validée est tirée au sort, jamais deux fois dans l&apos;année. Une date sert seulement à imposer une fiche un jour précis.</span></label>
         <label>Titre<input type="text" name="titre" id="titre" maxLength={200} defaultValue={sheet?.title ?? ""} placeholder="Interrogeons-nous sur…" /></label>
         <fieldset className="notions">
           <legend>Thèmes (trois au plus)</legend>
