@@ -1,6 +1,6 @@
-import { and, eq, inArray, isNull, like, ne } from "drizzle-orm";
+import { and, eq, inArray, isNotNull, isNull, like, ne } from "drizzle-orm";
 import type { Db } from "@/db";
-import { sheets, speakers, videos, type Reading } from "@/db/schema";
+import { sheets, speakers, videos, type PressArticle, type Reading } from "@/db/schema";
 
 // Transfert des brouillons IA d'une base de travail vers la base en ligne.
 // Les fiches gardent le même identifiant d'une base à l'autre (la base en ligne vient de l'instantané).
@@ -33,11 +33,17 @@ export interface DraftBundle {
   sheets: DraftedSheet[];
   speakers: DraftedSpeaker[];
   videoSpeakers: { videoId: string; speakerId: string }[];
+  // Articles de presse certifiés par l'IA, pour les fiches qui n'en ont pas encore en ligne.
+  articles?: { id: string; pressArticles: PressArticle[] }[];
 }
 
 const PLACEHOLDER = "[Question à rédiger]%";
 
 export async function exportDrafts(db: Db): Promise<DraftBundle> {
+  const withArticles = await db
+    .select({ id: sheets.id, pressArticles: sheets.pressArticles })
+    .from(sheets)
+    .where(isNotNull(sheets.pressArticles));
   const drafted = await db
     .select({
       id: sheets.id,
@@ -68,11 +74,12 @@ export async function exportDrafts(db: Db): Promise<DraftBundle> {
     sheets: drafted,
     speakers: people,
     videoSpeakers: links.filter((l): l is { videoId: string; speakerId: string } => !!l.speakerId),
+    articles: withArticles.filter((a): a is { id: string; pressArticles: PressArticle[] } => !!a.pressArticles?.length),
   };
 }
 
-export async function applyDrafts(db: Db, bundle: DraftBundle): Promise<{ sheets: number; speakers: number; videos: number }> {
-  const report = { sheets: 0, speakers: 0, videos: 0 };
+export async function applyDrafts(db: Db, bundle: DraftBundle): Promise<{ sheets: number; speakers: number; videos: number; articles: number }> {
+  const report = { sheets: 0, speakers: 0, videos: 0, articles: 0 };
 
   // Intervenants : un nom déjà connu en ligne garde sa fiche ; les autres sont ajoutés.
   const known = await db.select({ id: speakers.id, fullName: speakers.fullName }).from(speakers);
@@ -100,6 +107,16 @@ export async function applyDrafts(db: Db, bundle: DraftBundle): Promise<{ sheets
       .where(and(eq(videos.id, l.videoId), isNull(videos.speakerId)))
       .returning({ id: videos.id });
     report.videos += done.length;
+  }
+
+  // Articles : seulement sur une fiche qui n'en a pas encore (l'équipe a pu en saisir d'autres en ligne).
+  for (const a of bundle.articles ?? []) {
+    const done = await db
+      .update(sheets)
+      .set({ pressArticles: a.pressArticles })
+      .where(and(eq(sheets.id, a.id), isNull(sheets.pressArticles)))
+      .returning({ id: sheets.id });
+    report.articles += done.length;
   }
 
   // Fiches : uniquement celles qui attendent encore leur rédaction.

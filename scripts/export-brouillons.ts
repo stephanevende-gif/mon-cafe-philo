@@ -10,7 +10,7 @@ async function main() {
   const { db, pool } = createDb(process.env.DATABASE_URL!);
   const bundle = await exportDrafts(db);
   writeFileSync("data/brouillons-ia.json.gz", gzipSync(JSON.stringify(bundle)));
-  console.log(`${bundle.sheets.length} fiches, ${bundle.speakers.length} intervenants, ${bundle.videoSpeakers.length} vidéos reliées.`);
+  console.log(`${bundle.sheets.length} fiches, ${bundle.speakers.length} intervenants, ${bundle.videoSpeakers.length} vidéos reliées, ${bundle.articles?.length ?? 0} fiches avec articles.`);
   await pool.end();
 }
 

@@ -12,6 +12,7 @@ import { parseDuration, parseYouTubeId } from "@/lib/youtube";
 import { formatNotions, isNotion } from "@/lib/notions";
 import { portraitFromUrl } from "@/lib/portrait";
 import { cleanReadings, keepCovers } from "@/lib/readings";
+import { cleanTypedArticles } from "@/lib/press";
 import { withCovers } from "@/lib/covers";
 import { fillPosters, replaceShortPoster } from "@/lib/posters";
 
@@ -54,6 +55,21 @@ function readingsFrom(fd: FormData) {
     part: String(fd.get(`lecture${i}_partie`) ?? ""),
   }));
   const clean = cleanReadings(list);
+  return clean.length ? clean : null;
+}
+
+// Les deux articles de presse du formulaire : un article incomplet est ignoré.
+function articlesFrom(fd: FormData) {
+  const list = [1, 2].map((i) => ({
+    title: String(fd.get(`article${i}_titre`) ?? ""),
+    source: String(fd.get(`article${i}_source`) ?? ""),
+    url: String(fd.get(`article${i}_url`) ?? ""),
+    author: String(fd.get(`article${i}_auteur`) ?? ""),
+    date: String(fd.get(`article${i}_date`) ?? ""),
+    side: String(fd.get(`article${i}_position`) ?? ""),
+    description: String(fd.get(`article${i}_descriptif`) ?? ""),
+  }));
+  const clean = cleanTypedArticles(list);
   return clean.length ? clean : null;
 }
 
@@ -101,6 +117,7 @@ export async function saveSheet(fd: FormData) {
     problem: str(fd, "probleme", 700),
     solutionQuestion: str(fd, "solution", 700),
     readings,
+    pressArticles: articlesFrom(fd),
     shortVideoId,
     lectureVideoId,
     bookId: uuid(fd, "livre"),
@@ -318,4 +335,18 @@ export async function draftSheetsWithAi(fd: FormData) {
   const parts = [`${r.drafted} brouillon(s) proposé(s) par l'IA, à relire avant validation.`];
   if (r.failed.length) parts.push(`Sans proposition : ${r.failed.join(" ; ")}`);
   redirect(`${back}?message=${encodeURIComponent(parts.join(" "))}`);
+}
+
+// Deux articles de presse en ligne, un pour chaque branche de l'alternative, à relire avant validation.
+export async function findArticlesWithAi(fd: FormData) {
+  await requireEditor();
+  const id = uuid(fd, "id");
+  if (!id) redirect("/admin/fiches");
+  const back = `/admin/fiches/${id}`;
+  const { aiEnabled, proposeArticles } = await import("@/lib/ai");
+  if (!aiEnabled()) fail(back, "Assistance IA désactivée : la clé Anthropic n'est pas configurée.");
+  const { fillArticles } = await import("@/lib/press");
+  const r = await fillArticles(db, [id], (input, domains) => proposeArticles(input, domains), { replace: true });
+  revalidatePath("/", "layout");
+  fail(back, r.done ? "Deux articles trouvés, lus en entier et certifiés par l'IA." : "L'IA n'a pas trouvé deux articles qui conviennent. Vous pouvez les saisir vous-même.");
 }

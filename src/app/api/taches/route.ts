@@ -1,6 +1,6 @@
 import { timingSafeEqual } from "node:crypto";
 import { db } from "@/db";
-import { aiEnabled, chooseAuthorBooks, chooseFlatteringFrame, proposeSheet } from "@/lib/ai";
+import { aiEnabled, chooseAuthorBooks, chooseFlatteringFrame, proposeArticles, proposeSheet } from "@/lib/ai";
 import { runScheduledTasks } from "@/lib/automation";
 
 export const dynamic = "force-dynamic";
@@ -29,6 +29,7 @@ export async function POST(req: Request) {
     propose: aiEnabled() ? proposeSheet : undefined,
     chooseFrame: aiEnabled() ? (frames) => chooseFlatteringFrame(frames) : undefined,
     chooseBooks: aiEnabled() ? (question, titles) => chooseAuthorBooks(question, titles) : undefined,
+    proposeArticles: aiEnabled() ? (input, domains) => proposeArticles(input, domains) : undefined,
   });
   return Response.json(result);
 }

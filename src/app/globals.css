@@ -309,3 +309,31 @@ th { font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color:
 .notes-relues p { white-space: pre-line; }
 .probleme { scroll-margin-top: 24px; }
 .probleme .corps .modele { font-family: var(--serif); color: var(--gris); font-size: 1.02rem; line-height: 1.5; border: 1px dashed var(--filet); padding: 12px 14px; background: var(--papier); }
+
+/* Pour aller plus loin */
+.vers-approfondir { display: grid; gap: 10px; border-top: 1px solid var(--nuit); padding-top: 22px; }
+.vers-approfondir p { margin: 0; }
+.vers-approfondir .btn { justify-self: start; }
+.approfondir .articles .position { font-size: .78rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--nuit); }
+.approfondir .articles li { border-left: 3px solid var(--sepia); padding-left: 14px; }
+.approfondir .articles .partie { border-left: 0; padding-left: 0; }
+
+/* Fiche de travail imprimable */
+.fiche-travail { display: grid; gap: 22px; max-width: 760px; }
+.fiche-travail section { display: grid; gap: 10px; border-top: 1px solid var(--nuit); padding-top: 14px; }
+.fiche-travail h2 { margin: 0; font-size: 1.15rem; }
+.fiche-travail .lien { word-break: break-all; font-size: .85rem; color: var(--sepia); }
+.imprimer { display: grid; gap: 8px; border-top: 1px solid var(--nuit); padding-top: 18px; }
+.imprimer .btn { justify-self: start; }
+@media print {
+  .site-top, .steps-nav, .tabbar, .site-foot, .no-print { display: none !important; }
+  body { background: #fff; }
+  .fiche-travail { max-width: none; }
+  .fiche-travail .version { break-inside: avoid; box-shadow: none; }
+}
+
+/* Mes fiches */
+.liste-fiches { list-style: none; margin: 0; padding: 0; display: grid; gap: 18px; }
+.liste-fiches li { display: grid; gap: 8px; border-top: 1px solid var(--nuit); padding-top: 14px; }
+.liste-fiches .q { font-family: var(--serif); font-size: 1.3rem; color: var(--nuit); text-decoration: none; }
+.liste-fiches .q:hover { text-decoration: underline; }

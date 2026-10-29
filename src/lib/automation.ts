@@ -1,3 +1,4 @@
+import type { ProposeArticles } from "./press";
 import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, lt, ne, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import type { Db } from "@/db";
@@ -499,6 +500,8 @@ async function doPlan(db: Db, day: string): Promise<PlanResult> {
       problem: pick.problem,
       solutionQuestion: pick.solutionQuestion,
       readings: pick.readings,
+      authorBooks: pick.authorBooks,
+      pressArticles: pick.pressArticles,
       shortVideoId: pick.shortVideoId,
       lectureVideoId: pick.lectureVideoId,
       bookId: pick.bookId,
@@ -517,10 +520,10 @@ async function doPlan(db: Db, day: string): Promise<PlanResult> {
 // Tâche programmée complète : synchronisation (si la clé est configurée) puis programmation d'aujourd'hui et de demain.
 export async function runScheduledTasks(
   db: Db,
-  opts: Omit<SyncOptions, "apiKey"> & { apiKey?: string; chooseFrame?: ChooseFrame; chooseBooks?: ChooseBooks },
+  opts: Omit<SyncOptions, "apiKey"> & { apiKey?: string; chooseFrame?: ChooseFrame; chooseBooks?: ChooseBooks; proposeArticles?: ProposeArticles },
 ) {
   const now = opts.now ?? new Date();
-  const out: { sync?: SyncReport; syncError?: string; plans: PlanResult[]; postersError?: string } = { plans: [] };
+  const out: { sync?: SyncReport; syncError?: string; plans: PlanResult[]; postersError?: string; articles?: number; articlesError?: string } = { plans: [] };
   if (opts.apiKey) {
     try {
       out.sync = await syncPlaylist(db, { ...opts, apiKey: opts.apiKey, now });
@@ -532,6 +535,17 @@ export async function runScheduledTasks(
   const today = parisDay(now);
   out.plans.push(await planDay(db, today));
   out.plans.push(await planDay(db, addDays(today, 1)));
+  if (opts.proposeArticles) {
+    // Les deux articles de presse, certifiés par lecture, pour la fiche d'aujourd'hui et celle de demain.
+    try {
+      const { fillArticles } = await import("./press");
+      const ids = out.plans.map((p) => p.sheetId).filter((x): x is string => !!x);
+      const results = await Promise.all(ids.map((id) => fillArticles(db, [id], opts.proposeArticles!)));
+      out.articles = results.reduce((n, r) => n + r.done, 0);
+    } catch (e) {
+      out.articlesError = (e as Error).message;
+    }
+  }
   try {
     await postersForDays(db, [today, addDays(today, 1)], { choose: opts.chooseFrame, fetchImpl: opts.fetchImpl });
     await fillBibliographies(db, { days: [today, addDays(today, 1)], choose: opts.chooseBooks, fetchImpl: opts.fetchImpl });

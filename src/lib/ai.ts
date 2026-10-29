@@ -278,3 +278,85 @@ export async function chooseAuthorBooks(question: string, titles: string[], clie
   if (response.stop_reason === "refusal") return null;
   return response.parsed_output?.books.map((n) => n - 1) ?? null;
 }
+
+// ---------- articles de presse ----------
+
+const ArticleSchema = z.object({
+  url: z.string().describe("Adresse exacte de l'article, telle qu'elle figure dans les résultats de recherche."),
+  title: z.string().describe("Titre exact de l'article."),
+  source: z.string().describe("Nom du média ou de l'institution qui publie l'article."),
+  author: z.string().nullable().describe("Auteur ou autrice de l'article, ou null s'il n'est pas indiqué."),
+  date: z.string().nullable().describe("Date de publication (AAAA-MM-JJ), ou null si elle n'est pas indiquée."),
+  side: z.string().describe("La branche de l'alternative de la question que l'article défend, en quelques mots."),
+  description: z
+    .string()
+    .describe("Deux phrases rédigées par toi, 70 mots au plus, sans citer l'article : ce qu'il soutient, puis ce qu'il ne voit pas du problème en choisissant cette seule branche."),
+  readInFull: z.boolean().describe("Vrai seulement si tu as lu l'article en entier avec web_fetch et qu'il est librement accessible, sans abonnement."),
+});
+const ArticlesChoice = z.object({
+  articles: z.array(ArticleSchema).describe("Deux articles, un pour chaque branche de l'alternative ; une liste vide si tu n'en trouves pas deux qui conviennent."),
+});
+export type ArticleProposal = z.infer<typeof ArticleSchema>;
+export interface ArticleSearch {
+  articles: ArticleProposal[];
+  // Adresses réellement renvoyées par la recherche : un article proposé doit en faire partie.
+  seenUrls: string[];
+  // Adresses réellement lues : un article retenu doit avoir été lu en entier.
+  readUrls: string[];
+  // Consommation de la recherche, pour estimer son coût.
+  usage?: { input: number; output: number; searches: number; fetches: number };
+}
+
+// L'IA cherche sur les seuls sites autorisés deux articles qui prennent chacun une branche de l'alternative.
+export async function proposeArticles(
+  input: { question: string; problem?: string | null },
+  domains: string[],
+  client = defaultClient(),
+): Promise<ArticleSearch | null> {
+  const messages: Anthropic.Beta.BetaMessageParam[] = [
+    {
+      role: "user",
+      content: `Question : ${input.question}${input.problem ? `\n\nProblème que pose la question : ${input.problem}` : ""}`,
+    },
+  ];
+  const seenUrls: string[] = [];
+  const readUrls: string[] = [];
+  const usage = { input: 0, output: 0, searches: 0, fetches: 0 };
+  for (let turn = 0; turn < 6; turn++) {
+    const response = await client.beta.messages.parse({
+      model: "claude-opus-5-5",
+      max_tokens: 16000,
+      betas: ["server-side-fallback-2026-07-01"],
+      fallbacks: "default",
+      output_config: { effort: "low", format: betaZodOutputFormat(ArticlesChoice) },
+      tools: [
+        { type: "web_search_20260209", name: "web_search", max_uses: 10, allowed_domains: domains },
+        { type: "web_fetch_20260209", name: "web_fetch", max_uses: 6, allowed_domains: domains },
+      ],
+      system: `Tu aides les Éditions M-Éditer à compléter la page « Pour aller plus loin » de l'application « Mon café philo ». La question du jour est une alternative entre deux positions.
+Cherche deux articles de presse en ligne, librement accessibles, publiés sur les sites autorisés : le premier penche nettement vers une branche de l'alternative, le second vers l'autre. Un article convient s'il soutient le fond de cette position, même avec d'autres mots, sur un exemple précis ou à propos d'un auteur ; il n'a pas besoin de poser la question telle quelle. Chacun, parce qu'il privilégie une seule branche, se heurte au problème sans le voir : c'est ce qui intéresse le lecteur.
+Fais plusieurs recherches courtes, avec des mots-clés différents pour chaque branche, avant de conclure.
+Tu certifies chaque article retenu : avant de le proposer, lis-le en entier avec web_fetch. Ne le retiens que s'il est librement accessible en entier, publié par le site lui-même (ni blog, ni tribune promotionnelle, ni page d'accueil, ni liste), et s'il soutient vraiment la branche que tu lui attribues. Le titre, l'auteur et la date sont ceux de la page lue ; ta présentation est fidèle à ce que tu as lu.
+Ne propose que des articles trouvés dans les résultats de recherche, avec leur adresse exacte. N'invente aucun titre, aucun auteur, aucune date, aucune adresse. Si tu ne trouves pas deux articles qui conviennent, renvoie une liste vide.
+Écris en français.`,
+      messages,
+    });
+    usage.input += response.usage.input_tokens + (response.usage.cache_read_input_tokens ?? 0) + (response.usage.cache_creation_input_tokens ?? 0);
+    usage.output += response.usage.output_tokens;
+    usage.searches += response.usage.server_tool_use?.web_search_requests ?? 0;
+    usage.fetches += response.usage.server_tool_use?.web_fetch_requests ?? 0;
+    for (const block of response.content) {
+      if (block.type === "web_search_tool_result" && Array.isArray(block.content)) {
+        for (const r of block.content) if (r.type === "web_search_result") seenUrls.push(r.url);
+      }
+      if (block.type === "web_fetch_tool_result" && block.content.type === "web_fetch_result") readUrls.push(block.content.url);
+    }
+    if (response.stop_reason === "pause_turn") {
+      messages.push({ role: "assistant", content: response.content });
+      continue;
+    }
+    if (response.stop_reason === "refusal") return null;
+    return { articles: response.parsed_output?.articles ?? [], seenUrls, readUrls, usage };
+  }
+  return null;
+}

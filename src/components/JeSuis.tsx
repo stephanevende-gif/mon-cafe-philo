@@ -5,7 +5,6 @@ import type { JourneyContext } from "@/lib/journey";
 import { listEntries } from "@/lib/notebook";
 import { getNote, isEmptyNote } from "@/lib/listening-notes";
 import { saveProblemAttempt, saveReflection } from "@/app/actions/notebook";
-import { getSheetDetails } from "@/lib/sheets";
 import { Steps } from "./Steps";
 import { Question } from "./Question";
 import { Support } from "./Support";
@@ -17,12 +16,18 @@ import { SiteFoot } from "./SiteFoot";
 const STAGE_LABEL = { je_pense: "Je pense", donc: "Donc ?", je_suis: "Je suis" } as const;
 
 // Ce que la page demande au lecteur selon le nombre de versions déjà écrites.
-function nextPrompt(count: number, helpSolution: boolean): { invite?: string; label: string; placeholder: string } {
+function nextPrompt(count: number, helpSolution: boolean): { invite?: string; note?: string; label: string; placeholder: string } {
   const label = `Version ${count + 1}`;
   if (count === 0) return { label: "Ma première réflexion", placeholder: "Ce que je pense de cette question…" };
   if (count === 1)
     return { invite: "Après l'écoute de l'auteur, qu'en pensez-vous maintenant ?", label, placeholder: "Nuancer, compléter, objecter à ma propre pensée…" };
-  if (count === 2 && helpSolution) return { invite: "Quelle solution proposeriez-vous ?", label: `${label} : ma solution`, placeholder: "La solution que je propose…" };
+  if (count === 2 && helpSolution)
+    return {
+      invite: "À vous de jouer : quelle solution proposeriez-vous ?",
+      note: "Il n'y a pas de réponse attendue. Votre solution vous appartient : elle reste dans votre carnet, et vous pourrez bientôt la partager pour en débattre avec d'autres lecteurs.",
+      label: `${label} : ma solution`,
+      placeholder: "Pour tenir les deux exigences à la fois, je propose…",
+    };
   if (count === 3)
     return { invite: "Qu'ai-je appris, et que vais-je en retenir ?", label: `${label} : ce que je retiens`, placeholder: "Ce que cette question m'a appris…" };
   return { label, placeholder: "Nuancer, compléter, objecter à ma propre pensée…" };
@@ -41,8 +46,7 @@ export async function JeSuis({ ctx, message, showProblem = false }: { ctx: Journ
     );
   }
   const [entries, note] = await Promise.all([listEntries(db, user.id, ctx.sheet.id), getNote(db, user.id, ctx.sheet.id)]);
-  const authorBooks = ctx.sheet.authorBooks ?? [];
-  const author = authorBooks.length ? ((await getSheetDetails(db, ctx.sheet)).short?.speaker ?? null) : null;
+  const hasMore = !!(ctx.sheet.pressArticles?.length || ctx.sheet.readings?.length || ctx.sheet.authorBooks?.length);
   const shown = entries.length > 2 ? [entries[0], entries[entries.length - 1]] : entries;
   // À partir de la version 3, le lecteur est invité à proposer sa solution au problème posé par la question.
   const helpSolution = entries.length >= 2 && !!ctx.sheet.solutionQuestion;
@@ -57,7 +61,7 @@ export async function JeSuis({ ctx, message, showProblem = false }: { ctx: Journ
           <div className="stack" style={{ gap: 8 }}>
             <span className="step-label">Je suis</span>
             <h1 className="recall"><Question text={ctx.sheet.question} /></h1>
-            <span className="theme">Mon carnet · privé</span>
+            <span className="theme">Mon carnet · privé · <a href="/mes-fiches">toutes mes fiches</a></span>
           </div>
           <Notice code={message} />
           {entries.length === 0 ? (
@@ -121,7 +125,7 @@ export async function JeSuis({ ctx, message, showProblem = false }: { ctx: Journ
                       <p style={{ whiteSpace: "pre-line" }}>{attempt}</p>
                     </article>
                   )}
-                  {attempt && <span className="eyebrow">Le problème selon la fiche</span>}
+                  {attempt && <span className="eyebrow">Le problème que pose la question</span>}
                   {ctx.sheet.problem && <p>{ctx.sheet.problem}</p>}
                   <p className="solution">{ctx.sheet.solutionQuestion}</p>
                 </div>
@@ -137,6 +141,7 @@ export async function JeSuis({ ctx, message, showProblem = false }: { ctx: Journ
             </article>
           )}
           {prompt.invite && <p className="invite">{prompt.invite}</p>}
+          {prompt.note && <p className="muted" style={{ marginTop: -8 }}>{prompt.note}</p>}
           <form action={saveReflection} className="stack">
             <input type="hidden" name="fiche" value={ctx.sheet.id} />
             <input type="hidden" name="etape" value={entries.length === 0 ? "je_pense" : entries.length === 1 ? "donc" : "je_suis"} />
@@ -161,45 +166,27 @@ export async function JeSuis({ ctx, message, showProblem = false }: { ctx: Journ
               </div>
             </details>
           )}
-          {!!ctx.sheet.readings?.length && (
-            <section className="lectures" aria-labelledby="lectures-titre">
-              <span className="step-label">Pour approfondir</span>
-              <h2 id="lectures-titre" className="invite">Quels philosophes lire pour approfondir la question&nbsp;?</h2>
-              <ol>
-                {ctx.sheet.readings.map((r) => (
-                  <li key={r.philosopher + r.book} className={r.cover ? "avec-couverture" : undefined}>
-                    {r.cover && <img className="couverture" src={r.cover} alt={`Couverture de ${r.book}, ${r.philosopher}`} />}
-                    <div className="texte">
-                      <span className="ph">{r.philosopher}</span>
-                      <cite>{r.book}</cite>
-                      {r.part && <span className="partie">{r.part}</span>}
-                      <p>{r.description}</p>
-                    </div>
-                  </li>
-                ))}
-              </ol>
+          {entries.length >= 1 && (
+            <section className="imprimer">
+              <span className="step-label">Ma fiche de travail</span>
+              <p>
+                Toutes vos versions, vos notes d&apos;écoute et le problème, réunis sur une seule page, toujours à jour : à imprimer,
+                à enregistrer en PDF ou à télécharger pour Word.
+              </p>
+              <div className="row">
+                <a className="btn primary" href={`${ctx.base}/fiche-de-travail`}>Imprimer ma fiche de travail</a>
+                <a className="btn" href={`${ctx.base}/fiche-de-travail/word`} download>Télécharger en Word (.doc)</a>
+              </div>
             </section>
           )}
-          {author && authorBooks.length > 0 && (
-            <section className="lectures bibliographie" aria-labelledby="bibliographie-titre">
-              <span className="step-label">Aux Éditions M-Éditer</span>
-              <h2 id="bibliographie-titre" className="invite">Bibliographie de {author.fullName}</h2>
-              <ol>
-                {authorBooks.map((b) => (
-                  <li key={b.url} className={b.cover ? "avec-couverture" : undefined}>
-                    {b.cover && (
-                      <a href={b.url} target="_blank" rel="noopener noreferrer" aria-label={`${b.title}, sur le site des Éditions M-Éditer`}>
-                        <img className="couverture" src={b.cover} alt={`Couverture de ${b.title}, ${author.fullName}`} />
-                      </a>
-                    )}
-                    <div className="texte">
-                      <cite><a href={b.url} target="_blank" rel="noopener noreferrer">{b.title}</a></cite>
-                      {b.description && <p>{b.description}</p>}
-                      <a className="voir" href={b.url} target="_blank" rel="noopener noreferrer">Voir le livre sur le site des Éditions →</a>
-                    </div>
-                  </li>
-                ))}
-              </ol>
+          {hasMore && (
+            <section className="vers-approfondir">
+              <span className="step-label">Pour aller plus loin</span>
+              <p>
+                Deux articles de presse qui prennent chacun parti, des philosophes à lire et les livres de l&apos;auteur : de quoi
+                approfondir la question, et voir pourquoi une seule branche de l&apos;alternative ne suffit pas.
+              </p>
+              <a className="btn primary" href={`${ctx.base}/approfondir`}>Approfondir la question →</a>
             </section>
           )}
         </div>
