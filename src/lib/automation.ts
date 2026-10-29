@@ -2,7 +2,7 @@ import type { ProposeArticles } from "./press";
 import { and, asc, desc, eq, gte, inArray, isNotNull, isNull, lt, ne, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import type { Db } from "@/db";
-import { sheets, speakers, syncRuns, videos } from "@/db/schema";
+import { books as booksTable, sheets, speakers, syncRuns, videos } from "@/db/schema";
 import { cleanReadings } from "./readings";
 import { addDays, parisDay } from "./dates";
 import { getVideos, linkedVideoIds, listPlaylist, type Fetch } from "./youtube-api";
@@ -617,18 +617,28 @@ export async function fillBibliographies(
     ? inArray(sheets.id, opts.sheetIds)
     : sql`${inArray(sheets.day, opts.days ?? [])} or (${sheets.isBackup} and ${sheets.status} = 'validee')`;
   const rows = await db
-    .select({ id: sheets.id, question: sheets.question, profileUrl: speakers.profileUrl })
+    .select({ id: sheets.id, question: sheets.question, profileUrl: speakers.profileUrl, authorBooks: sheets.authorBooks, bookId: sheets.bookId })
     .from(sheets)
     .innerJoin(videos, eq(videos.id, sheets.shortVideoId))
     .innerJoin(speakers, eq(speakers.id, videos.speakerId))
-    .where(and(isNull(sheets.authorBooks), isNotNull(speakers.profileUrl), scope));
+    .where(and(sql`(${sheets.authorBooks} is null or ${sheets.bookId} is null)`, isNotNull(speakers.profileUrl), scope));
   const done = [];
   for (const r of rows) {
     if (!r.profileUrl || !isPublisherPage(r.profileUrl)) continue;
-    const books = await authorBibliography(r.profileUrl, r.question, { choose: opts.choose, fetchImpl: opts.fetchImpl as typeof fetch | undefined });
-    if (!books.length) continue;
-    await db.update(sheets).set({ authorBooks: books }).where(and(eq(sheets.id, r.id), isNull(sheets.authorBooks)));
-    done.push({ question: r.question, books: books.map((b) => b.title) });
+    let books = r.authorBooks;
+    if (!books?.length) {
+      books = await authorBibliography(r.profileUrl, r.question, { choose: opts.choose, fetchImpl: opts.fetchImpl as typeof fetch | undefined });
+      if (!books.length) continue;
+      await db.update(sheets).set({ authorBooks: books }).where(and(eq(sheets.id, r.id), isNull(sheets.authorBooks)));
+      done.push({ question: r.question, books: books.map((b) => b.title) });
+    }
+    // Le livre mis en avant sur la fiche : le premier de la bibliographie retenue, s'il figure au catalogue.
+    if (!r.bookId) {
+      const urls = books.map((b) => b.url);
+      const listed = await db.select({ id: booksTable.id, url: booksTable.catalogueUrl }).from(booksTable).where(inArray(booksTable.catalogueUrl, urls));
+      const main = urls.map((u) => listed.find((l) => l.url === u)).find(Boolean);
+      if (main) await db.update(sheets).set({ bookId: main.id }).where(and(eq(sheets.id, r.id), isNull(sheets.bookId)));
+    }
   }
   return done;
 }
