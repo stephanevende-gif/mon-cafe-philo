@@ -44,7 +44,7 @@ const Proposal = z.object({
   author: z
     .string()
     .nullable()
-    .describe("Nom de l'intervenant tel qu'il figure dans le titre ou la description, ou null s'il n'y figure pas."),
+    .describe("Prénom et nom de l'intervenant tel qu'il figure dans le titre ou la description, sans aucune précision entre parenthèses, ou null s'il n'y figure pas."),
   missing: z.string().nullable().describe("Ce qui manque pour une fiche fiable, ou null."),
 });
 
