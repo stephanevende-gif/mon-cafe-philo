@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { createDb } from "../src/db";
+import { directUrl } from "./direct-url";
 
 async function main() {
   if (!process.env.DATABASE_URL) {
@@ -8,7 +9,7 @@ async function main() {
     console.warn("DATABASE_URL absent : étape ignorée.");
     return;
   }
-  const { db, pool } = createDb(process.env.DATABASE_URL!);
+  const { db, pool } = createDb(directUrl());
   await migrate(db, { migrationsFolder: "drizzle" });
   await pool.end();
   console.log("Base de données à jour.");
