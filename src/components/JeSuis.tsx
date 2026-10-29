@@ -12,6 +12,7 @@ import { AccessLine } from "./AccessLine";
 import { AccessEnded } from "./AccessEnded";
 import { Notice } from "./Notice";
 import { SiteFoot } from "./SiteFoot";
+import { Dictionnaire } from "./Dictionnaire";
 
 const STAGE_LABEL = { je_pense: "Je pense", donc: "Donc ?", je_suis: "Je suis" } as const;
 
@@ -153,6 +154,7 @@ export async function JeSuis({ ctx, message, showProblem = false }: { ctx: Journ
             </label>
             <div className="row"><button className="btn primary" type="submit">Enregistrer une nouvelle version</button></div>
           </form>
+          <Dictionnaire />
           {entries.length > 2 && (
             <details>
               <summary className="small" style={{ cursor: "pointer", fontWeight: 600 }}>Toutes mes versions ({entries.length})</summary>

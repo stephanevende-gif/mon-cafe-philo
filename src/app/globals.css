@@ -331,10 +331,14 @@ th { font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color:
 .notes-ecoute .etat.saved { color: var(--succes); }
 .notes-ecoute .etat.error { color: var(--sepia); }
 .notes-ecoute label { font-size: .85rem; }
+.aside-notes { display: flex; flex-direction: column; gap: 12px; }
+.dictionnaire { display: flex; flex-direction: column; gap: 6px; background: var(--papier); border: 1px solid var(--filet); padding: 12px 16px; font-size: .85rem; }
+.dictionnaire .row { display: flex; gap: 8px; flex-wrap: nowrap; }
+.dictionnaire input { flex: 1; min-width: 0; }
 .notes-ecoute textarea { min-height: 0; resize: vertical; font-size: .95rem; line-height: 1.45; }
 @media (min-width: 900px) {
   .avec-notes { grid-template-columns: minmax(0, 1.45fr) minmax(260px, 1fr); align-items: start; }
-  .avec-notes .notes-ecoute { position: sticky; top: 16px; }
+  .avec-notes .aside-notes { position: sticky; top: 16px; }
   .avec-notes.court { grid-template-columns: minmax(0, 300px) minmax(260px, 1fr); }
 }
 .notes-relues p { white-space: pre-line; }
