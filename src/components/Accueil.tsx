@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { speakers, videos, type User } from "@/db/schema";
 import { PAID_DAYS, PRICE_CENTS, TRIAL_DAYS } from "@/lib/access";
 import { formatDayLong } from "@/lib/dates";
+import { STUDENT_PATTERN } from "@/lib/student";
 import type { JourneyContext } from "@/lib/journey";
 import { Question } from "./Question";
 import { SiteFoot } from "./SiteFoot";
@@ -52,7 +53,11 @@ const thumb = (youtubeId: string) => `https://i.ytimg.com/vi/${encodeURIComponen
 // Intervenants présentés, renouvelés chaque jour : seulement ceux dont la présentation est publiée, avec environ
 // un tiers d'intervenantes.
 async function faces(day: string) {
-  const base = and(isNotNull(speakers.portrait), not(like(speakers.qualification, "Présentation à compléter%")));
+  const base = and(
+    isNotNull(speakers.portrait),
+    not(like(speakers.qualification, "Présentation à compléter%")),
+    sql`${speakers.qualification} !~* ${STUDENT_PATTERN}`,
+  );
   const pick = (cond: ReturnType<typeof and>, n: number) =>
     db
       .select({ id: speakers.id, fullName: speakers.fullName, qualification: speakers.qualification, portrait: speakers.portrait })
@@ -125,7 +130,7 @@ export async function Accueil({ ctx, user }: { ctx: JourneyContext; user: User |
       </section>
 
       <section className="hero">
-        <h1>{user ? `Bonjour ${user.displayName}.` : "Chaque jour, une question. Chaque jour, l'exercice de penser."}</h1>
+        <h1 className={user ? "salut" : undefined}>{user ? `Bonjour ${user.displayName}.` : "Chaque jour, une question. Chaque jour, l'exercice de penser."}</h1>
         <p className="lead">
           Cinq minutes par jour pour réfléchir à une vraie question philosophique, avec des philosophes et des
           universitaires en chair et en os.

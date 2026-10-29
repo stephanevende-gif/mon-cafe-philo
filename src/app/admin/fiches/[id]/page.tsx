@@ -8,6 +8,7 @@ import { chooseShortPoster, deleteSheet, draftSheetsWithAi, findArticlesWithAi, 
 import { aiEnabled } from "@/lib/ai";
 import { formatDate } from "@/lib/dates";
 import { cleanTitle } from "@/lib/youtube";
+import { studentSpeaker } from "@/lib/student";
 import { NOTIONS, notionsOf } from "@/lib/notions";
 
 // Les actions de cette page (IA, recherche d'articles) peuvent prendre plusieurs minutes.
@@ -28,6 +29,11 @@ export default async function Page({ params, searchParams }: Props) {
   const posterOf = async (vid: string | null | undefined) =>
     vid ? (await db.select({ id: videos.id, poster: videos.poster }).from(videos).where(eq(videos.id, vid)))[0] ?? null : null;
   const [shortPoster, lecturePoster] = await Promise.all([posterOf(sheet?.shortVideoId), posterOf(sheet?.lectureVideoId)]);
+  const [who] = sheet?.shortVideoId
+    ? await db.select({ fullName: speakers.fullName, qualification: speakers.qualification, description: videos.description })
+        .from(videos).innerJoin(speakers, eq(speakers.id, videos.speakerId)).where(eq(videos.id, sheet.shortVideoId))
+    : [];
+  const student = !!who && studentSpeaker(who);
   const current = notionsOf(sheet?.theme ?? "");
   const label = (v: (typeof vids)[number]) => `${cleanTitle(v.title)}${v.speaker ? ` · ${v.speaker}${v.verified ? " ✓" : ""}` : ""}`;
 
@@ -54,6 +60,11 @@ export default async function Page({ params, searchParams }: Props) {
           <PendingButton pending="Recherche et lecture des articles en cours (une à trois minutes)…">{sheet.pressArticles?.length ? "Chercher deux autres articles avec l'IA" : "Chercher deux articles avec l'IA"}</PendingButton>
           <span className="hint"> Presse et revues en ligne en accès libre ; une à trois minutes.</span>
         </form>
+      )}
+      {student && (
+        <p className="notice error" role="note">
+          L&apos;intervenant de ce Short est présenté comme étudiant : cette fiche ne sera jamais tirée pour le jour, même validée.
+        </p>
       )}
       {sheet?.replayOf && <p className="notice ok" role="note">Rediffusion automatique d&apos;une fiche déjà publiée.</p>}
       <form action={saveSheet} className="field-group">
