@@ -31,33 +31,55 @@ function allowedUrl(raw: string): string | null {
 
 const clip = (s: string | null | undefined, n: number) => (s ?? "").trim().replace(/\s+/g, " ").slice(0, n);
 
-// Certification : un article n'est gardé que s'il est complet, sur un site autorisé, effectivement trouvé par la recherche,
-// lu en entier par l'IA (l'outil de lecture l'a réellement récupéré) et librement accessible ; les deux articles
-// doivent défendre deux branches différentes.
-export function cleanArticles(found: ArticleSearch): PressArticle[] {
-  const norm = (list: string[]) => new Set(list.map((u) => allowedUrl(u)).filter(Boolean));
-  const seen = norm(found.seenUrls);
-  const read = norm(found.readUrls);
+// Forme comparable d'une adresse : la lecture peut renvoyer la même page avec ou sans « www », barre finale,
+// paramètres de suivi ou version « amp ».
+function urlKey(raw: string): string | null {
+  const url = allowedUrl(raw);
+  if (!url) return null;
+  const u = new URL(url);
+  const path = u.pathname.replace(/^\/amp(?=\/)/, "").replace(/\/+$/, "");
+  return `${u.hostname.replace(/^www\./, "").toLowerCase()}${decodeURI(path)}`;
+}
+
+// Certification : un article n'est gardé que s'il est complet, sur un site autorisé, lu en entier par l'IA
+// (l'outil de lecture a réellement récupéré la page, ce qui prouve aussi qu'elle existe) et librement accessible ;
+// les deux articles doivent défendre deux branches différentes. Le motif du refus sert à l'administration.
+export function checkArticles(found: ArticleSearch): { articles: PressArticle[]; reason: string } {
+  const read = new Set(found.readUrls.map(urlKey).filter(Boolean));
   const list: PressArticle[] = [];
+  const refused: string[] = [];
   for (const a of found.articles) {
     const url = allowedUrl(a.url);
-    if (!url || !a.readInFull || !seen.has(url) || !read.has(url) || list.some((x) => x.url === url)) continue;
-    const item: PressArticle = {
-      title: clip(a.title, MAX.title),
-      source: clip(a.source, MAX.source),
-      url,
-      side: clip(a.side, MAX.side),
-      description: clip(a.description, MAX.description),
-    };
-    if (!item.title || !item.source || !item.side || !item.description) continue;
-    const author = clip(a.author, MAX.author);
-    if (author) item.author = author;
-    if (a.date && /^\d{4}-\d{2}-\d{2}$/.test(a.date.trim())) item.date = a.date.trim();
-    list.push(item);
+    const key = urlKey(a.url);
+    if (!url || !key) refused.push("site non autorisé");
+    else if (!a.readInFull) refused.push("pas lu en entier");
+    else if (!read.has(key)) refused.push("page non lue par l'outil de lecture");
+    else if (list.some((x) => urlKey(x.url) === key)) refused.push("doublon");
+    else {
+      const item: PressArticle = {
+        title: clip(a.title, MAX.title),
+        source: clip(a.source, MAX.source),
+        url,
+        side: clip(a.side, MAX.side),
+        description: clip(a.description, MAX.description),
+      };
+      if (!item.title || !item.source || !item.side || !item.description) {
+        refused.push("fiche incomplète");
+        continue;
+      }
+      const author = clip(a.author, MAX.author);
+      if (author) item.author = author;
+      if (a.date && /^\d{4}-\d{2}-\d{2}$/.test(a.date.trim())) item.date = a.date.trim();
+      list.push(item);
+    }
   }
-  if (list.length < 2 || list[0].side.toLowerCase() === list[1].side.toLowerCase()) return [];
-  return list.slice(0, 2);
+  const counts = `${found.articles.length} proposé(s), ${found.readUrls.length} page(s) lue(s)`;
+  if (list.length < 2) return { articles: [], reason: refused.length ? `${counts} ; refus : ${refused.join(", ")}` : counts };
+  if (list[0].side.toLowerCase() === list[1].side.toLowerCase()) return { articles: [], reason: `${counts} ; les deux articles défendent la même branche` };
+  return { articles: list.slice(0, 2), reason: "" };
 }
+
+export const cleanArticles = (found: ArticleSearch): PressArticle[] => checkArticles(found).articles;
 
 // Saisie de l'équipe dans l'administration : deux articles au plus, tout champ obligatoire rempli.
 export function cleanTypedArticles(items: Partial<Record<keyof PressArticle, string>>[]): PressArticle[] {
@@ -102,9 +124,10 @@ export async function fillArticles(
     if (!sheet || (sheet.pressArticles && !opts.replace) || sheet.question.startsWith("[Question à rédiger]")) continue;
     try {
       const found = await propose({ question: sheet.question, problem: sheet.problem }, PRESS_DOMAINS);
-      const articles = found ? cleanArticles(found) : [];
+      const { articles, reason } = found ? checkArticles(found) : { articles: [], reason: "recherche interrompue" };
       if (articles.length < 2) {
-        failed.push(sheet.question);
+        console.error("Articles refusés", sheet.id, reason, JSON.stringify(found?.articles ?? []), JSON.stringify(found?.readUrls ?? []));
+        failed.push(`${sheet.question} (${reason})`);
         continue;
       }
       const r = await db
@@ -113,8 +136,9 @@ export async function fillArticles(
         .where(opts.replace ? eq(sheets.id, id) : and(eq(sheets.id, id), isNull(sheets.pressArticles)))
         .returning({ id: sheets.id });
       done += r.length;
-    } catch {
-      failed.push(sheet.question);
+    } catch (e) {
+      console.error("Recherche d'articles en échec", sheet.id, e);
+      failed.push(`${sheet.question} (${(e as Error).message.slice(0, 200)})`);
     }
   }
   return { done, failed };
