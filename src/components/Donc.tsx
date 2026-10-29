@@ -14,6 +14,7 @@ import { YouTubePlayer } from "./YouTubePlayer";
 import { AccessEnded } from "./AccessEnded";
 import { SiteFoot } from "./SiteFoot";
 import { Notice } from "./Notice";
+import { Dictionnaire } from "./Dictionnaire";
 import { NotesEcoute } from "./NotesEcoute";
 
 export async function Donc({ ctx, message }: { ctx: JourneyContext; message?: string }) {
@@ -92,7 +93,10 @@ export async function Donc({ ctx, message }: { ctx: JourneyContext; message?: st
                 <YouTubePlayer youtubeId={d.short.youtubeId} title={cleanTitle(d.short.title)} vertical duration={formatDuration(d.short.durationSeconds)} poster={d.short.poster} />
                 <span className="ttl">{cleanTitle(d.short.title)}</span>
               </div>
-              <NotesEcoute sheetId={d.sheet.id} initial={note ?? EMPTY_NOTE} />
+              <div className="aside-notes">
+                <NotesEcoute sheetId={d.sheet.id} initial={note ?? EMPTY_NOTE} />
+                <Dictionnaire />
+              </div>
             </div>
           </div>
         )}
