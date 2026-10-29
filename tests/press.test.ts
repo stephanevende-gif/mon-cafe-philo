@@ -30,7 +30,7 @@ describe("articles de presse", () => {
     expect(cleanArticles({ articles: [a, art("https://exemple.org/b", "Le travail aliène")], seenUrls: [...seenUrls, "https://exemple.org/b"], readUrls: [...readUrls, "https://exemple.org/b"] })).toEqual([]);
     expect(cleanArticles({ articles: [a, art("https://www.vie-publique.fr/files/r.pdf", "Le travail aliène")], seenUrls: [...seenUrls, "https://www.vie-publique.fr/files/r.pdf"], readUrls: [...readUrls, "https://www.vie-publique.fr/files/r.pdf"] })).toEqual([]);
     // Le motif du refus est donné à l'administration.
-    expect(checkArticles({ articles: [a, b], seenUrls, readUrls: [a.url] }).reason).toBe("2 proposé(s), 1 page(s) lue(s) ; refus : page non lue par l'outil de lecture");
+    expect(checkArticles({ articles: [a, b], seenUrls, readUrls: [a.url] }).reason).toBe("2 proposé(s), 1 lecture(s) ; refus : page non lue par l'outil de lecture");
     expect(cleanArticles({ articles: [a, { ...b, side: "le travail libère" }], seenUrls, readUrls: [...readUrls, "https://theconversation.com/invente-2", "https://exemple.org/b", "https://www.vie-publique.fr/files/r.pdf"] })).toEqual([]);
   });
 
@@ -54,7 +54,7 @@ describe("articles de presse", () => {
     expect((await ctx.db.query.sheets.findFirst({ where: eq(sheets.id, done.id) }))?.pressArticles).toBeNull();
     // Un échec donne son motif.
     const refuse = async () => ({ articles: [a, b], seenUrls: [a.url, b.url], readUrls: [] });
-    expect(await fillArticles(ctx.db, [todo.id], refuse, { replace: true })).toEqual({ done: 0, failed: [todo.question], reasons: ["2 proposé(s), 0 page(s) lue(s) ; refus : page non lue par l'outil de lecture, page non lue par l'outil de lecture"] });
+    expect(await fillArticles(ctx.db, [todo.id], refuse, { replace: true })).toEqual({ done: 0, failed: [todo.question], reasons: ["2 proposé(s), 0 lecture(s) ; refus : page non lue par l'outil de lecture, page non lue par l'outil de lecture"] });
     // Rien à chercher une seconde fois.
     expect(await fillArticles(ctx.db, [todo.id], propose)).toEqual({ done: 0, failed: [], reasons: [] });
   });

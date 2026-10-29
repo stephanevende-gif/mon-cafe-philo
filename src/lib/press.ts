@@ -73,7 +73,7 @@ export function checkArticles(found: ArticleSearch): { articles: PressArticle[];
       list.push(item);
     }
   }
-  const counts = `${found.articles.length} proposé(s), ${found.readUrls.length} page(s) lue(s)`;
+  const counts = `${found.articles.length} proposé(s), ${new Set(found.readUrls).size} lecture(s)${found.remark ? ` ; selon l'IA : ${clip(found.remark, 300)}` : ""}`;
   if (list.length < 2) return { articles: [], reason: refused.length ? `${counts} ; refus : ${refused.join(", ")}` : counts };
   if (list[0].side.toLowerCase() === list[1].side.toLowerCase()) return { articles: [], reason: `${counts} ; les deux articles défendent la même branche` };
   return { articles: list.slice(0, 2), reason: "" };
