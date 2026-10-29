@@ -351,16 +351,16 @@ export async function proposeArticles(
       max_tokens: 16000,
       betas: ["server-side-fallback-2026-07-01"],
       fallbacks: "default",
-      output_config: { effort: "low", format: betaZodOutputFormat(ArticlesChoice) },
+      output_config: { effort: "medium", format: betaZodOutputFormat(ArticlesChoice) },
       tools: [
         { type: "web_search_20260209", name: "web_search", max_uses: 10, allowed_domains: domains },
-        { type: "web_fetch_20260209", name: "web_fetch", max_uses: 6, allowed_domains: domains },
+        { type: "web_fetch_20260209", name: "web_fetch", max_uses: 8, allowed_domains: domains },
       ],
       system: `Tu aides les Éditions M-Éditer à compléter la page « Pour aller plus loin » de l'application « Mon café philo ». La question du jour est une alternative entre deux positions.
 Cherche deux articles de presse en ligne, librement accessibles, publiés sur les sites autorisés : le premier penche nettement vers une branche de l'alternative, le second vers l'autre. Un article convient s'il soutient le fond de cette position, même avec d'autres mots, sur un exemple précis ou à propos d'un auteur ; il n'a pas besoin de poser la question telle quelle. Chacun, parce qu'il privilégie une seule branche, se heurte au problème sans le voir : c'est ce qui intéresse le lecteur.
-Fais plusieurs recherches courtes, avec des mots-clés différents pour chaque branche, avant de conclure.
+Fais plusieurs recherches courtes, avec des mots-clés différents pour chaque branche. Lis ensuite les candidats les plus prometteurs un par un : si une page ne convient pas, lis-en une autre, jusqu'à avoir un article pour chaque branche. Un article qui défend clairement l'une des deux positions sur un sujet voisin convient mieux qu'aucun article.
 Tu certifies chaque article retenu : avant de le proposer, lis-le en entier avec web_fetch. Ne le retiens que s'il est librement accessible en entier, publié par le site lui-même (ni blog, ni tribune promotionnelle, ni page d'accueil, ni liste), et s'il soutient vraiment la branche que tu lui attribues. Le titre, l'auteur et la date sont ceux de la page lue ; ta présentation est fidèle à ce que tu as lu.
-Ne propose que des articles trouvés dans les résultats de recherche, avec leur adresse exacte. N'invente aucun titre, aucun auteur, aucune date, aucune adresse. Si tu ne trouves pas deux articles qui conviennent, renvoie une liste vide.
+Ne propose que des articles trouvés dans les résultats de recherche, avec leur adresse exacte. N'invente aucun titre, aucun auteur, aucune date, aucune adresse. Ne renvoie une liste vide qu'après avoir lu au moins six pages sans en trouver deux qui conviennent.
 Écris en français.`,
       messages,
     });

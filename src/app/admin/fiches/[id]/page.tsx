@@ -51,8 +51,8 @@ export default async function Page({ params, searchParams }: Props) {
       {sheet && aiEnabled() && (
         <form action={findArticlesWithAi}>
           <input type="hidden" name="id" value={sheet.id} />
-          <PendingButton pending="Recherche et lecture des articles en cours (environ une minute)…">{sheet.pressArticles?.length ? "Chercher deux autres articles avec l'IA" : "Chercher deux articles avec l'IA"}</PendingButton>
-          <span className="hint"> Presse et revues en ligne en accès libre ; environ une minute.</span>
+          <PendingButton pending="Recherche et lecture des articles en cours (une à trois minutes)…">{sheet.pressArticles?.length ? "Chercher deux autres articles avec l'IA" : "Chercher deux articles avec l'IA"}</PendingButton>
+          <span className="hint"> Presse et revues en ligne en accès libre ; une à trois minutes.</span>
         </form>
       )}
       {sheet?.replayOf && <p className="notice ok" role="note">Rediffusion automatique d&apos;une fiche déjà publiée.</p>}
