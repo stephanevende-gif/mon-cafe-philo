@@ -29,7 +29,7 @@ const STEPS = [
   {
     label: "Je suis",
     title: "Une réponse réfléchie",
-    text: "Le problème que travaille la question se découvre. Une solution devrait permettre de le surmonter, que vous pourrez mettre en perspective.",
+    text: "Le problème que travaille la question se découvre. Votre solution devrait permettre de le surmonter, que vous pourrez mettre en perspective.",
   },
 ];
 
