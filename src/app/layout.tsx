@@ -6,6 +6,7 @@ import "@fontsource/source-sans-3/600.css";
 import "@fontsource/source-sans-3/700.css";
 import "./globals.css";
 import { currentUser, isEditor } from "@/lib/auth";
+import { THEME_SCRIPT, ThemeToggle } from "@/components/ThemeToggle";
 
 export const metadata: Metadata = {
   title: { default: "Mon café philo", template: "%s · Mon café philo" },
@@ -14,12 +15,21 @@ export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
 };
 
-export const viewport: Viewport = { themeColor: "#fdfef9", viewportFit: "cover" };
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#fdfef9" },
+    { media: "(prefers-color-scheme: dark)", color: "#15172b" },
+  ],
+  viewportFit: "cover",
+};
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const user = await currentUser();
   return (
-    <html lang="fr">
+    <html lang="fr" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
       <body>
         <header className="site-top">
           <Link href="/" className="brand">
@@ -31,6 +41,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <Link href="/archives">Archives</Link>
             {isEditor(user) && <Link href="/admin">Administration</Link>}
             {user ? <Link href="/compte">Mon compte</Link> : <Link href="/connexion">Connexion</Link>}
+            <ThemeToggle />
           </nav>
         </header>
         {children}
