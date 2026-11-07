@@ -158,8 +158,8 @@ export async function Donc({ ctx, message }: { ctx: JourneyContext; message?: st
           <div className="seal-slot">
             <div className="seal">
               <svg width="20" height="20" viewBox="0 0 18 18" aria-hidden="true" style={{ flex: "none" }}>
-                <circle cx="9" cy="9" r="8" fill="none" stroke="#943E37" strokeWidth="1.4" />
-                <path d="M5 9.3 7.8 12 13 6.5" fill="none" stroke="#943E37" strokeWidth="1.6" />
+                <circle cx="9" cy="9" r="8" fill="none" style={{ stroke: "var(--sepia)" }} strokeWidth="1.4" />
+                <path d="M5 9.3 7.8 12 13 6.5" fill="none" style={{ stroke: "var(--sepia)" }} strokeWidth="1.6" />
               </svg>
               <div>
                 <b>Intervention humaine authentique — sélection éditoriale M-Éditer</b>
